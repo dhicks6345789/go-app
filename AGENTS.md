@@ -16,7 +16,7 @@ The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
 
-Create an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform.
+Create an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include index.html in the Git repository, but exclude the compiled executable files.
 
 Copy index.html to ~/www/go-app, where it will be served by the system webserver.
 
