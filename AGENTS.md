@@ -16,4 +16,6 @@ The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
 
+~/www is a live web server folder. Once files have been compiled, please copy them to the ~/www/go-app/ folder for distribution. Please generate an "index.html" file that includes the contents of the README.md file and contains links to download the executables for each platform.
+
 Add any new or modified files to the Git repository and do a "git push".
