@@ -1,5 +1,9 @@
 This Git repository should contain a Go application that compiles into a single (per-platform), self-contained executable containing application logic, web-based user interface and API documentation.
 
+This Git repository is hosted on Github at: https://github.com/dhicks6345789/go-app
+
+The project homepage is at: https://users.sansay.co.uk/d.b.hicks/go-app
+
 Do a "git pull" at the start of operations to make sure the local repository is up-to-date.
 
 The application should be self-hostable by a home user. If run on a home desktop machine (Windows, MacOS, Linux, Raspberry Pi) the executable should start up the back-end server to listen on an available non-privileged port, and should then start up an available web browser to point at the user interface served by that back-end. In this operation mode, the application should only be available to the local web browser, it shouldn't accept traffic from the wider network, and user authentication should be by simply reading the username from the local environment.
@@ -16,7 +20,7 @@ The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
 
-Create an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include index.html in the Git repository, but exclude the compiled executable files.
+Create an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Include index.html in the Git repository, but exclude the compiled executable files.
 
 Copy index.html to ~/www/go-app, where it will be served by the system webserver.
 
