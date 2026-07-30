@@ -7,7 +7,7 @@ from pathlib import Path
 SOURCE_DIR = Path("/home/d.b.hicks/go-app")
 DIST_DIR = SOURCE_DIR / "dist"
 DOCS_DIR = SOURCE_DIR / "docs"
-WWW_DIR = Path("/home/d.b.hicks/www/d.b.hicks/go-app")
+WWW_DIR = Path("/home/d.b.hicks/www/go-app")
 README_PATH = SOURCE_DIR / "README.md"
 INDEX_PATH = WWW_DIR / "index.html"
 
@@ -128,7 +128,7 @@ def markdown_to_html(md_text):
 
     return "\n".join(html_lines)
 
-def generate_html(download_prefix):
+def generate_html(download_prefix, docs_href="./docs/api.html"):
     downloads_html_cards = []
 
     for item in EXECUTABLES:
@@ -340,7 +340,7 @@ def generate_html(download_prefix):
         <header>
             <h1>⚡ Go Application Release Distribution</h1>
             <p>Self-contained, cross-platform executable builds with embedded React UI and OpenAPI docs.</p>
-            <p><a href="https://github.com/dhicks6345789/go-app" target="_blank" class="github-link">View on GitHub</a> &middot; <a href="./docs/api.html" target="_blank" class="github-link">API Documentation</a></p>
+            <p><a href="https://github.com/dhicks6345789/go-app" target="_blank" class="github-link">View on GitHub</a> &middot; <a href="{docs_href}" target="_blank" class="github-link">API Documentation</a></p>
         </header>
 
         <h2 class="section-title">📦 Download Executables</h2>
@@ -387,8 +387,8 @@ def main():
         print(f"Copied api_docs_template.html -> {www_docs / 'api.html'}")
     else:
         print("Warning: api_docs_template.html not found")
+    www_html = generate_html("./", "/d.b.hicks/go-app/docs/api.html")
 
-    www_html = generate_html("./")
     INDEX_PATH.write_text(www_html, encoding="utf-8")
     print(f"Generated distribution page at: {INDEX_PATH}")
 
