@@ -18,6 +18,10 @@ type Item struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type CreateItemRequest struct {
+	Name string `json:"name" example:"Sample Item"`
+}
+
 type APIHandler struct {
 	startTime    time.Time
 	isServerMode bool
@@ -44,6 +48,12 @@ func NewAPIHandler(isServerMode bool, openAPISpec []byte) *APIHandler {
 	}
 }
 
+// Health godoc
+// @Summary      Health Check
+// @Description  Returns operational status of the service.
+// @Tags         system
+// @Success      200  {object}  map[string]string
+// @Router       /api/v1/health [get]
 func (h *APIHandler) Health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -52,12 +62,24 @@ func (h *APIHandler) Health(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// User godoc
+// @Summary      Get Current User
+// @Description  Returns authenticated user info based on environment or proxy headers.
+// @Tags         user
+// @Success      200  {object}  auth.UserInfo
+// @Router       /api/v1/user [get]
 func (h *APIHandler) User(w http.ResponseWriter, r *http.Request) {
 	userInfo := auth.GetUser(r, h.isServerMode)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(userInfo)
 }
 
+// Info godoc
+// @Summary      System Info
+// @Description  Returns system metrics, Go version, OS/Arch, and uptime.
+// @Tags         system
+// @Success      200  {object}  map[string]string
+// @Router       /api/v1/info [get]
 func (h *APIHandler) Info(w http.ResponseWriter, r *http.Request) {
 	mode := "desktop"
 	if h.isServerMode {
@@ -75,49 +97,60 @@ func (h *APIHandler) Info(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *APIHandler) Items(w http.ResponseWriter, r *http.Request) {
+// ListItems godoc
+// @Summary      List Items
+// @Description  Returns all stored items.
+// @Tags         items
+// @Success      200  {object}  map[string][]Item
+// @Router       /api/v1/items [get]
+func (h *APIHandler) ListItems(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"items": h.items,
+	})
+}
 
-	switch r.Method {
-	case http.MethodGet:
-		h.mu.RLock()
-		defer h.mu.RUnlock()
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"items": h.items,
-		})
-
-	case http.MethodPost:
-		var req struct {
-			Name string `json:"name"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
-			http.Error(w, `{"error":"Invalid request payload"}`, http.StatusBadRequest)
-			return
-		}
-
-		user := auth.GetUser(r, h.isServerMode)
-
-		h.mu.Lock()
-		newItem := Item{
-			ID:        h.nextID,
-			Name:      req.Name,
-			CreatedBy: user.Username,
-			CreatedAt: time.Now(),
-		}
-		h.nextID++
-		h.items = append(h.items, newItem)
-		h.mu.Unlock()
-
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(newItem)
-
-	default:
-		http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+// CreateItem godoc
+// @Summary      Create Item
+// @Description  Creates a new item.
+// @Tags         items
+// @Accept       json
+// @Produce      json
+// @Param        body  body      CreateItemRequest  true  "Item to create"
+// @Success      201   {object}  Item
+// @Failure      400   {object}  map[string]string
+// @Router       /api/v1/items [post]
+func (h *APIHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
+	var req CreateItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"Invalid request payload"}`))
+		return
 	}
+
+	user := auth.GetUser(r, h.isServerMode)
+
+	h.mu.Lock()
+	newItem := Item{
+		ID:        h.nextID,
+		Name:      req.Name,
+		CreatedBy: user.Username,
+		CreatedAt: time.Now(),
+	}
+	h.nextID++
+	h.items = append(h.items, newItem)
+	h.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(newItem)
 }
 
 func (h *APIHandler) ServeDocs(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/docs/api/openapi.json" {
+	if r.URL.Path == "/docs/api/openapi.json" || r.URL.Path == "/docs/api/swagger.json" {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(h.openAPISpec)
 		return
@@ -143,7 +176,7 @@ func (h *APIHandler) ServeDocs(w http.ResponseWriter, r *http.Request) {
   <script>
     window.onload = () => {
       window.ui = SwaggerUIBundle({
-        url: '/docs/api/openapi.json',
+        url: '/docs/api/swagger.json',
         dom_id: '#swagger-ui',
         deepLinking: true,
         presets: [

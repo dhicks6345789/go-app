@@ -1,5 +1,11 @@
 package main
 
+// @title           Go Self-Contained App API
+// @version         1.0.0
+// @description     API documentation for the self-contained Go application framework.
+// @host            localhost:8080
+// @BasePath        /api/v1
+
 import (
 	"embed"
 	"flag"
@@ -19,7 +25,7 @@ import (
 //go:embed ui/dist/*
 var uiFS embed.FS
 
-//go:embed docs/openapi.json
+//go:embed docs/swagger.json
 var openAPISpec []byte
 
 func main() {
@@ -53,7 +59,8 @@ func main() {
 	mux.HandleFunc("/api/v1/health", apiHandler.Health)
 	mux.HandleFunc("/api/v1/user", apiHandler.User)
 	mux.HandleFunc("/api/v1/info", apiHandler.Info)
-	mux.HandleFunc("/api/v1/items", apiHandler.Items)
+	mux.HandleFunc("GET /api/v1/items", apiHandler.ListItems)
+	mux.HandleFunc("POST /api/v1/items", apiHandler.CreateItem)
 
 	// Docs handlers
 	mux.HandleFunc("/docs/api", apiHandler.ServeDocs)
