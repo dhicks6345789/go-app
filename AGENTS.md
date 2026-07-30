@@ -13,3 +13,5 @@ The application should serve its user interface from the root "/" endpoint.
 The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
+
+Add any new or modified files to the Git repository and do a "git push".
