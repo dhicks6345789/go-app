@@ -1,0 +1,15 @@
+# Node / React
+ui/node_modules/
+ui/dist/
+ui/.vite/
+ui/.env.local
+
+# Go binary & temp files
+go-app
+go-app.exe
+*.log
+
+# OS / Editor
+.DS_Store
+.vscode/
+.idea/

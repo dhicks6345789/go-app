@@ -1,0 +1,7 @@
+ui/node_modules
+ui/dist
+go-app
+.git
+.gitignore
+Dockerfile
+Makefile
