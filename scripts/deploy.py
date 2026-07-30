@@ -316,6 +316,21 @@ def generate_html(download_prefix):
         }}
         a {{ color: var(--accent-color); text-decoration: none; }}
         a:hover {{ text-decoration: underline; }}
+        .github-link {{
+            display: inline-block;
+            margin-top: 0.5rem;
+            padding: 0.4rem 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: border-color 0.2s ease;
+        }}
+        .github-link:hover {{
+            border-color: var(--accent-color);
+            text-decoration: none;
+        }}
         hr {{ border: none; border-top: 1px solid var(--border-color); margin: 2rem 0; }}
     </style>
 </head>
@@ -324,6 +339,7 @@ def generate_html(download_prefix):
         <header>
             <h1>⚡ Go Application Release Distribution</h1>
             <p>Self-contained, cross-platform executable builds with embedded React UI and OpenAPI docs.</p>
+            <p><a href="https://github.com/dhicks6345789/go-app" target="_blank" class="github-link">View on GitHub</a></p>
         </header>
 
         <h2 class="section-title">📦 Download Executables</h2>
