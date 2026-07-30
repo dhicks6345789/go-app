@@ -7,7 +7,7 @@ from pathlib import Path
 SOURCE_DIR = Path("/home/d.b.hicks/go-app")
 DIST_DIR = SOURCE_DIR / "dist"
 DOCS_DIR = SOURCE_DIR / "docs"
-WWW_DIR = Path("/home/d.b.hicks/www/go-app")
+WWW_DIR = Path("/home/d.b.hicks/www/d.b.hicks/go-app")
 README_PATH = SOURCE_DIR / "README.md"
 INDEX_PATH = WWW_DIR / "index.html"
 
