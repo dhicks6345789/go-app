@@ -34,13 +34,30 @@ A self-contained, self-hostable Go application that compiles application logic, 
 
 ### Building from Source
 
-To install dependencies, build the React frontend, and compile the Go executable:
+To install dependencies, build the React frontend, and compile the Go executable for your current host platform:
 
 ```bash
 make build
 ```
 
 This generates a standalone binary named `go-app`.
+
+### Cross-Platform Compilation
+
+You can compile standalone executables for multiple platforms (Windows x64, macOS Intel/ARM, Linux x64, Raspberry Pi ARM):
+
+```bash
+# Build for all supported target platforms into ./dist/
+make build-all
+
+# Or build for a specific target platform:
+make build-linux-amd64     # Linux x64 -> dist/go-app-linux-amd64
+make build-windows-amd64   # Windows x64 -> dist/go-app-windows-amd64.exe
+make build-darwin-amd64    # macOS Intel x64 -> dist/go-app-darwin-amd64
+make build-darwin-arm64    # macOS Apple Silicon -> dist/go-app-darwin-arm64
+make build-rpi-arm64       # Raspberry Pi ARM64 -> dist/go-app-rpi-arm64
+make build-rpi-armv7       # Raspberry Pi 32-bit ARMv7 -> dist/go-app-rpi-armv7
+```
 
 ---
 
