@@ -7,6 +7,7 @@ ui/.env.local
 # Go binary & temp files
 go-app
 go-app.exe
+dist/
 *.log
 
 # OS / Editor
