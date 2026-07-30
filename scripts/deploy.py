@@ -127,23 +127,11 @@ def markdown_to_html(md_text):
 
     return "\n".join(html_lines)
 
-def main():
-    WWW_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Target distribution directory: {WWW_DIR}")
-
+def generate_html(download_prefix):
     downloads_html_cards = []
 
     for item in EXECUTABLES:
-        src_path = DIST_DIR / item["filename"]
-        dest_path = WWW_DIR / item["filename"]
-        
-        size_str = "Unavailable"
-        if src_path.exists():
-            shutil.copy2(src_path, dest_path)
-            size_str = format_size(dest_path.stat().st_size)
-            print(f"Copied {item['filename']} ({size_str}) -> {dest_path}")
-        else:
-            print(f"Warning: {src_path} not found. Skipping file copy.")
+        size_str = format_size((DIST_DIR / item["filename"]).stat().st_size) if (DIST_DIR / item["filename"]).exists() else "Unavailable"
 
         downloads_html_cards.append(f"""
         <div class="download-card">
@@ -153,7 +141,7 @@ def main():
                 <p>{item['desc']}</p>
                 <div class="file-meta">File: <code>{item['filename']}</code> • {size_str}</div>
             </div>
-            <a href="./{item['filename']}" class="btn-download" download>
+            <a href="{download_prefix}{item['filename']}" class="btn-download" download>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                 Download
             </a>
@@ -163,7 +151,7 @@ def main():
     readme_content = README_PATH.read_text(encoding="utf-8") if README_PATH.exists() else ""
     body_html = markdown_to_html(readme_content)
 
-    full_html = f"""<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -352,8 +340,29 @@ def main():
 </html>
 """
 
-    INDEX_PATH.write_text(full_html, encoding="utf-8")
+
+def main():
+    WWW_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"Target distribution directory: {WWW_DIR}")
+
+    for item in EXECUTABLES:
+        src_path = DIST_DIR / item["filename"]
+        dest_path = WWW_DIR / item["filename"]
+
+        if src_path.exists():
+            shutil.copy2(src_path, dest_path)
+            print(f"Copied {item['filename']} ({format_size(dest_path.stat().st_size)}) -> {dest_path}")
+        else:
+            print(f"Warning: {src_path} not found. Skipping file copy.")
+
+    www_html = generate_html("./")
+    INDEX_PATH.write_text(www_html, encoding="utf-8")
     print(f"Generated distribution page at: {INDEX_PATH}")
+
+    repo_html = generate_html("./dist/")
+    REPO_INDEX = SOURCE_DIR / "index.html"
+    REPO_INDEX.write_text(repo_html, encoding="utf-8")
+    print(f"Generated repository index.html at: {REPO_INDEX}")
 
 if __name__ == "__main__":
     main()
