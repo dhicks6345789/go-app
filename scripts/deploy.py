@@ -6,6 +6,7 @@ from pathlib import Path
 
 SOURCE_DIR = Path("/home/d.b.hicks/go-app")
 DIST_DIR = SOURCE_DIR / "dist"
+DOCS_DIR = SOURCE_DIR / "docs"
 WWW_DIR = Path("/home/d.b.hicks/www/go-app")
 README_PATH = SOURCE_DIR / "README.md"
 INDEX_PATH = WWW_DIR / "index.html"
@@ -339,7 +340,7 @@ def generate_html(download_prefix):
         <header>
             <h1>⚡ Go Application Release Distribution</h1>
             <p>Self-contained, cross-platform executable builds with embedded React UI and OpenAPI docs.</p>
-            <p><a href="https://github.com/dhicks6345789/go-app" target="_blank" class="github-link">View on GitHub</a></p>
+            <p><a href="https://github.com/dhicks6345789/go-app" target="_blank" class="github-link">View on GitHub</a> &middot; <a href="./docs/openapi.json" target="_blank" class="github-link">API Documentation</a></p>
         </header>
 
         <h2 class="section-title">📦 Download Executables</h2>
@@ -370,6 +371,14 @@ def main():
             print(f"Copied {item['filename']} ({format_size(dest_path.stat().st_size)}) -> {dest_path}")
         else:
             print(f"Warning: {src_path} not found. Skipping file copy.")
+
+    # Copy API documentation
+    www_docs = WWW_DIR / "docs"
+    www_docs.mkdir(parents=True, exist_ok=True)
+    for doc_file in DOCS_DIR.iterdir():
+        if doc_file.is_file():
+            shutil.copy2(doc_file, www_docs / doc_file.name)
+            print(f"Copied docs/{doc_file.name} -> {www_docs / doc_file.name}")
 
     www_html = generate_html("./")
     INDEX_PATH.write_text(www_html, encoding="utf-8")
