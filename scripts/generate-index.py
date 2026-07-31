@@ -53,74 +53,140 @@ def format_size(bytes_size):
         bytes_size /= 1024.0
     return f"{bytes_size:.1f} TB"
 
+INLINE_TOKEN_RE = re.compile(r'\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\)')
+
+def html_escape(text):
+    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+def inline_to_html(text):
+    text = html_escape(text)
+    def repl(m):
+        token = m.group(0)
+        if token.startswith('**'):
+            return f"<strong>{token[2:-2]}</strong>"
+        if token.startswith('`'):
+            return f"<code>{token[1:-1]}</code>"
+        link = re.match(r'\[([^\]]+)\]\(([^)]+)\)', token)
+        if link:
+            return f'<a href="{link.group(2)}" target="_blank">{link.group(1)}</a>'
+        return token
+    return INLINE_TOKEN_RE.sub(repl, text)
+
+def render_table(t_lines):
+    if not t_lines:
+        return ""
+    out = ["<div class='table-container'><table>"]
+    for i, line in enumerate(t_lines):
+        cells = [c.strip() for c in line.strip('|').split('|')]
+        if i == 1 and all(set(c.strip()) <= {'-', ':'} for c in cells):
+            continue
+        tag = "th" if i == 0 else "td"
+        rendered = "".join(f"<{tag}>{inline_to_html(c)}</{tag}>" for c in cells)
+        out.append(f"<tr>{rendered}</tr>")
+    out.append("</table></div>")
+    return "\n".join(out)
+
 def markdown_to_html(md_text):
     lines = md_text.split('\n')
     html_lines = []
     in_code_block = False
-    in_table = False
+    list_stack = []
     table_lines = []
 
-    def render_table(t_lines):
-        if not t_lines:
-            return ""
-        out = ["<div class='table-container'><table>"]
-        for i, line in enumerate(t_lines):
-            cells = [c.strip() for c in line.strip('|').split('|')]
-            if i == 1 and all(set(c.strip()) <= {'-', ':'} for c in cells):
-                continue
-            tag = "th" if i == 0 else "td"
-            out.append("<tr>" + "".join(f"<{tag}>{c}</{tag}>" for c in cells) + "</tr>")
-        out.append("</table></div>")
-        return "\n".join(out)
+    def close_lists(indent):
+        while list_stack and list_stack[-1] > indent:
+            html_lines.append("</ul>")
+            list_stack.pop()
+            if list_stack:
+                html_lines.append("</li>")
 
-    for line in lines:
+    def close_all_lists():
+        while list_stack:
+            html_lines.append("</ul>")
+            list_stack.pop()
+            if list_stack:
+                html_lines.append("</li>")
+
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
         if line.startswith("```"):
             if in_code_block:
                 html_lines.append("</code></pre>")
                 in_code_block = False
             else:
+                close_all_lists()
                 lang = line[3:].strip()
                 html_lines.append(f"<pre><code class='language-{lang}'>")
                 in_code_block = True
+            i += 1
             continue
 
         if in_code_block:
-            escaped = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            html_lines.append(escaped)
+            html_lines.append(html_escape(line))
+            i += 1
             continue
 
-        if line.startswith("|") and line.endswith("|"):
-            if not in_table:
-                in_table = True
-                table_lines = []
-            table_lines.append(line)
+        if not stripped:
+            close_all_lists()
+            i += 1
             continue
-        elif in_table:
+
+        if stripped.startswith("|") and stripped.endswith("|"):
+            close_all_lists()
+            table_lines.append(line)
+            i += 1
+            continue
+
+        if table_lines:
             html_lines.append(render_table(table_lines))
-            in_table = False
             table_lines = []
 
-        if line.startswith("# "):
-            html_lines.append(f"<h1>{line[2:]}</h1>")
-        elif line.startswith("## "):
-            html_lines.append(f"<h2>{line[3:]}</h2>")
-        elif line.startswith("### "):
-            html_lines.append(f"<h3>{line[4:]}</h3>")
-        elif line.startswith("---"):
-            html_lines.append("<hr/>")
-        elif line.startswith("- "):
-            html_lines.append(f"<li>{line[2:]}</li>")
-        elif line.strip() == "":
-            html_lines.append("<p></p>")
-        else:
-            processed = line
-            processed = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', processed)
-            processed = re.sub(r'`(.*?)`', r'<code>\1</code>', processed)
-            processed = re.sub(r'\[(.*?)\]\((.*?)\)', r'<a href="\2" target="_blank">\1</a>', processed)
-            html_lines.append(f"<p>{processed}</p>")
+        heading = re.match(r'^(#{1,6})\s+(.*)$', stripped)
+        if heading:
+            close_all_lists()
+            level = len(heading.group(1))
+            html_lines.append(f"<h{level}>{inline_to_html(heading.group(2))}</h{level}>")
+            i += 1
+            continue
 
-    if in_table:
+        if re.match(r'^(-{3,}|\*{3,})$', stripped):
+            close_all_lists()
+            html_lines.append("<hr/>")
+            i += 1
+            continue
+
+        item = re.match(r'^(\s*)[-*+]\s+(.*)$', line)
+        if item:
+            indent = len(item.group(1).replace('\t', '    '))
+            if not list_stack:
+                list_stack.append(indent)
+                html_lines.append("<ul>")
+            elif indent > list_stack[-1]:
+                list_stack.append(indent)
+                if html_lines[-1].rstrip().endswith("</li>"):
+                    html_lines[-1] = html_lines[-1].rstrip()[:-len("</li>")]
+                html_lines.append("<ul>")
+            elif indent < list_stack[-1]:
+                close_lists(indent)
+                if not list_stack:
+                    list_stack.append(indent)
+                    html_lines.append("<ul>")
+            html_lines.append(f"<li>{inline_to_html(item.group(2))}</li>")
+            i += 1
+            continue
+
+        close_all_lists()
+        html_lines.append(f"<p>{inline_to_html(stripped)}</p>")
+        i += 1
+
+    if in_code_block:
+        html_lines.append("</code></pre>")
+    if table_lines:
         html_lines.append(render_table(table_lines))
+    close_all_lists()
 
     return "\n".join(html_lines)
 

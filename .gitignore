@@ -13,6 +13,10 @@ dist/
 # Generated distribution page (deployed by external script)
 index.html
 
+# Python
+__pycache__/
+*.pyc
+
 # OS / Editor
 .DS_Store
 .vscode/
