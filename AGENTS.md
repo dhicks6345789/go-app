@@ -22,4 +22,8 @@ The application should serve auto-generated OpenAPI documentation from the "docs
 
 Create an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Include index.html in the Git repository, but exclude the compiled executable files.
 
+Make sure the "docs/api.html" file is generated.
+
+The index.html file, compiled executables and the contents of the "docs" folder will be copied to the live website by an external bash script.
+
 Add any new or modified files to the Git repository and do a "git push".
