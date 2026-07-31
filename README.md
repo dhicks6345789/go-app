@@ -39,4 +39,6 @@ go-app -mode=server -port=8080
 
 ## Using As a Basis For Your Own Projects
 
-Add you own functions to 
+Add you own functions to internal/handlers/handlers.go.
+
+Add more user interface to
