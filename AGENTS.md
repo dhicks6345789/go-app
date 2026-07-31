@@ -20,7 +20,7 @@ The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
 
-Generate an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. do not include the genrated index.html in the Git repository, exclude both it and the compiled executable files.
+Generate an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. do not include the generated index.html in the Git repository, exclude both it and the compiled executable files. Links used to the "docs" folder in index.html should be relative as I might move or re-host the project homepage at some point.
 
 Make sure the "docs/api.html" file is generated.
 
