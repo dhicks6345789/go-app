@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-import os
-import shutil
 import re
 from pathlib import Path
 
 SOURCE_DIR = Path("/home/d.b.hicks/go-app")
 DIST_DIR = SOURCE_DIR / "dist"
-DOCS_DIR = SOURCE_DIR / "docs"
-WWW_DIR = Path("/home/d.b.hicks/www/go-app")
 README_PATH = SOURCE_DIR / "README.md"
-INDEX_PATH = WWW_DIR / "index.html"
+REPO_INDEX = SOURCE_DIR / "index.html"
 
 EXECUTABLES = [
     {
@@ -359,41 +355,7 @@ def generate_html(download_prefix, docs_href="./docs/api.html"):
 
 
 def main():
-    WWW_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"Target distribution directory: {WWW_DIR}")
-
-    for item in EXECUTABLES:
-        src_path = DIST_DIR / item["filename"]
-        dest_path = WWW_DIR / item["filename"]
-
-        if src_path.exists():
-            shutil.copy2(src_path, dest_path)
-            print(f"Copied {item['filename']} ({format_size(dest_path.stat().st_size)}) -> {dest_path}")
-        else:
-            print(f"Warning: {src_path} not found. Skipping file copy.")
-
-    # Copy swaggo-generated API documentation
-    www_docs = WWW_DIR / "docs"
-    www_docs.mkdir(parents=True, exist_ok=True)
-    for doc_file in DOCS_DIR.iterdir():
-        if doc_file.is_file() and doc_file.suffix in (".json", ".yaml"):
-            shutil.copy2(doc_file, www_docs / doc_file.name)
-            print(f"Copied docs/{doc_file.name} -> {www_docs / doc_file.name}")
-
-    # Copy API docs HTML page
-    api_template = SOURCE_DIR / "scripts" / "api_docs_template.html"
-    if api_template.exists():
-        shutil.copy2(api_template, www_docs / "api.html")
-        print(f"Copied api_docs_template.html -> {www_docs / 'api.html'}")
-    else:
-        print("Warning: api_docs_template.html not found")
-    www_html = generate_html("./", "/d.b.hicks/go-app/docs/api.html")
-
-    INDEX_PATH.write_text(www_html, encoding="utf-8")
-    print(f"Generated distribution page at: {INDEX_PATH}")
-
     repo_html = generate_html("./dist/")
-    REPO_INDEX = SOURCE_DIR / "index.html"
     REPO_INDEX.write_text(repo_html, encoding="utf-8")
     print(f"Generated repository index.html at: {REPO_INDEX}")
 

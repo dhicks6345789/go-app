@@ -1,4 +1,4 @@
-.PHONY: all build build-ui build-all build-linux-amd64 build-windows-amd64 build-darwin-amd64 build-darwin-arm64 build-rpi-arm64 build-rpi-armv7 deploy-www run-desktop run-server clean test
+.PHONY: all build build-ui build-all build-linux-amd64 build-windows-amd64 build-darwin-amd64 build-darwin-arm64 build-rpi-arm64 build-rpi-armv7 index run-desktop run-server clean test
 
 OUT_DIR := dist
 
@@ -65,11 +65,11 @@ build-all: build-ui
 	@echo " -> Raspberry Pi 32-bit ARMv7..."
 	@CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -ldflags="-w -s" -o $(OUT_DIR)/go-app-rpi-armv7 main.go
 	@echo "==> All builds complete in ./$(OUT_DIR)/"
-	@$(MAKE) deploy-www
+	@$(MAKE) index
 
-deploy-www:
-	@echo "==> Deploying executables and index.html to ~/www/go-app/..."
-	@python3 scripts/deploy.py
+index:
+	@echo "==> Generating repository index.html..."
+	@python3 scripts/generate-index.py
 
 run-desktop: build
 	@echo "==> Starting in Desktop Mode..."
