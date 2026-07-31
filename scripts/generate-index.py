@@ -354,10 +354,20 @@ def generate_html(download_prefix, docs_href="./docs/api.html"):
 """
 
 
+def generate_api_docs():
+    template = SOURCE_DIR / "scripts" / "api_docs_template.html"
+    dest = SOURCE_DIR / "docs" / "api.html"
+    if template.exists():
+        dest.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"Generated API docs HTML at: {dest}")
+    else:
+        print("Warning: api_docs_template.html not found")
+
 def main():
     repo_html = generate_html("./dist/")
     REPO_INDEX.write_text(repo_html, encoding="utf-8")
     print(f"Generated repository index.html at: {REPO_INDEX}")
+    generate_api_docs()
 
 if __name__ == "__main__":
     main()

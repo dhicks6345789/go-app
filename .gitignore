@@ -10,6 +10,9 @@ go-app.exe
 dist/
 *.log
 
+# Generated distribution page (deployed by external script)
+index.html
+
 # OS / Editor
 .DS_Store
 .vscode/
