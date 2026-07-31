@@ -364,7 +364,7 @@ def generate_api_docs():
         print("Warning: api_docs_template.html not found")
 
 def main():
-    repo_html = generate_html("./dist/")
+    repo_html = generate_html("./")
     REPO_INDEX.write_text(repo_html, encoding="utf-8")
     print(f"Generated repository index.html at: {REPO_INDEX}")
     generate_api_docs()
