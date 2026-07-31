@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-SOURCE_DIR = Path("/home/d.b.hicks/go-app")
+SOURCE_DIR = Path("go-app")
 DIST_DIR = SOURCE_DIR / "dist"
 README_PATH = SOURCE_DIR / "README.md"
 REPO_INDEX = SOURCE_DIR / "index.html"
@@ -124,7 +124,7 @@ def markdown_to_html(md_text):
 
     return "\n".join(html_lines)
 
-def generate_html(download_prefix, docs_href="./docs/api.html"):
+def generate_html(download_prefix, docs_href="docs/api.html"):
     downloads_html_cards = []
 
     for item in EXECUTABLES:
