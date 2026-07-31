@@ -2,7 +2,7 @@ This Git repository should contain a Go application that compiles into a single 
 
 This Git repository is hosted on Github at: https://github.com/dhicks6345789/go-app
 
-The project homepage is at: https://users.sansay.co.uk/d.b.hicks/go-app
+The project homepage is at: https://sansay.co.uk/go-app/
 
 Do a "git pull" at the start of operations to make sure the local repository is up-to-date and then re-read AGENTS.md.
 
@@ -26,6 +26,6 @@ Generate an "index.html" file that includes the same information (transformed fr
 
 Make sure the "docs/api.html" file is generated.
 
-The index.html file, compiled executables and the contents of the "docs" folder will be copied to the live website by an external bash script.
+The index.html file, compiled executables and the contents of the "docs" folder will be copied to the live website, once built, by an external bash script.
 
 Add any new or modified files to the Git repository and do a "git push".
