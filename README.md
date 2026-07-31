@@ -1,15 +1,15 @@
-# go-app
+# Go App
 
-A self-contained, self-hostable Go application that compiles application logic, an embedded React web user interface, and interactive OpenAPI documentation into a single executable.
+A project to act as an example framework to produce a self-hostable Go application that contains application logic, an embedded React web user interface and interactive OpenAPI documentation into a single executable.
 
 ## Features
 
-- **Single Executable Deployment**: Uses Go's `embed` package to bundle the frontend React assets and OpenAPI specifications into a single binary.
-- **Offline & Air-gapped Operation**: Designed to operate without internet access; all UI libraries and documentation resources are served locally.
+- **Single Executable Deployment**: Uses Go's `embed` package to bundle the frontend React assets, documentation and OpenAPI specifications into a single binary.
+- **Offline Operation**: Designed to be able to operate without internet access; all UI libraries and documentation resources are served locally.
 - **Dual Operation Modes**:
-  - **Desktop Mode**: Ideal for local home use (Linux, macOS, Windows, Raspberry Pi). Listens on `127.0.0.1`, automatically launches your default web browser, and identifies the user via local environment variables (`USER`, `USERNAME`, `LOGNAME`).
-  - **Server Mode**: Suitable for multi-user deployment behind reverse proxies (Traefik, Pangolin, Cloudflare Tunnel, Authelia). Listens on `0.0.0.0` and authenticates users via incoming proxy headers (`X-Forwarded-User`, `Remote-User`, `Pangolin-User`, etc.).
-- **Built-in API Documentation**: Auto-renders Swagger UI for OpenAPI specifications directly at `/docs/api`.
+  - **Desktop Mode**: Ideal for local home desktop use on pretty much any platform (Linux, MacOS, Windows, Raspberry Pi). Running the executable on your desktop machine should give you a localhost-only server and automatically launch your default web browser to display the user interface.
+  - **Server Mode**: Suitable for multi-user deployment behind authenticating reverse proxies (Pangolin / Traefik, Cloudflare Tunnel, Authelia). Authenticates users via incoming proxy headers (`X-Forwarded-User`, `Remote-User`, `Pangolin-User`, etc.). As a single, statically linked Go binary with no external dependencies, it can be run inside a very minimal container environment.
+- **Built-in API Documentation**: Auto-renders Swagger UI for OpenAPI specifications directly at `/docs/api`. Built for use by AI agents - you should be able to point an AI agent 
 
 ---
 
