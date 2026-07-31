@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-SOURCE_DIR = Path("go-app")
+SOURCE_DIR = Path.home() / Path("go-app")
 DIST_DIR = SOURCE_DIR / "dist"
 README_PATH = SOURCE_DIR / "README.md"
 REPO_INDEX = SOURCE_DIR / "index.html"
