@@ -2,7 +2,7 @@ This Git repository should contain a Go application that compiles into a single 
 
 This Git repository is hosted on Github at: https://github.com/dhicks6345789/go-app
 
-The project homepage is at: https://users.sansay.co.uk/d.b.hicks/go-app
+The project homepage is at: https://users.sansay.co.uk/d.b.hicks/go-app/
 
 Do a "git pull" at the start of operations to make sure the local repository is up-to-date and then re-read AGENTS.md.
 
