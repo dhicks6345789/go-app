@@ -41,4 +41,4 @@ go-app -mode=server -port=8080
 
 Add you own functions to internal/handlers/handlers.go.
 
-Add more user interface to
+Add more user interface to ui/index.html.
