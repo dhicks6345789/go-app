@@ -13,20 +13,24 @@ A project to act as an example framework to produce a self-hostable Go applicati
 
 ---
 
-## Endpoints
-
-| Endpoint | Description |
-| --- | --- |
-| `/` | Web UI served from embedded React build (supports SPA client-side routing) |
-| `/api/v1/health` | Health check endpoint |
-| `/api/v1/user` | Current authenticated user context and authentication mode |
-| `/api/v1/info` | Runtime system information (uptime, Go version, OS/Arch) |
-| `/api/v1/items` | Example REST API endpoints (`GET`, `POST`) |
-| `/docs/api` | Interactive OpenAPI / Swagger UI documentation |
-
----
-
 ## Quick Start
+
+### Desktop
+
+Simply download and run the executable for your platform from the [project homepage](https://users.sansay.co.uk/d.b.hicks/go-app).
+
+### Server
+
+You can run Go App behind an authenticating proxy server - the proxy server authenticates the user and passes the username to the application via a simple HTTP header. For instance, if you were using Pangolin as your authenticating server, you would add a basic container to hold the Go App executable:
+
+```
+```
+
+
+Again, simply download the executable for your platform from the homepage 
+
+./go-app -mode=server -port=8080
+
 
 ### Prerequisites
 - [Go](https://golang.org/) 1.24 or later
