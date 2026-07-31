@@ -19,7 +19,7 @@ This application itself doesn't do anything much, it just presents a basic user 
 
 ### Desktop
 
-Simply download and run the executable for your platform from the [project homepage](https://users.sansay.co.uk/d.b.hicks/go-app).
+Simply download and run the executable for your platform from the [project homepage](https://sansay.co.uk/go-app/).
 
 ### Server
 
