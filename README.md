@@ -52,18 +52,16 @@ cd go-app
 make build-all
 ```
 
-This will compile the executables for all platforms and generate documentation, including Swaggo's interactive API documentation. You can copy the generated files directly to somewhere they can be served as a web site:
+This will compile the executables for all platforms and generate documentation, including Swaggo's interactive API documentation.
+
+You can copy the generated files directly to somewhere they can be served as a web site, you just need to specify the path you want the files to go to, e.g.:
 
 ```
-mkdir -p ~/www/go-app
-mkdir -p ~/www/go-app/docs
-cp index.html ~/www/go-app
-cp docs/* ~/www/go-app/docs
-cp dist/* ~/www/go-app
+make dist DEST_DIR=~/www/go-app
 ```
 
 ## Using As a Basis For Your Own Projects
 
-Add you own functions to internal/handlers/handlers.go.
+The entire purpose of this project is just to act as a basic starting point for a self-contained "app" that is easy for end users to run and use. It should produce executables able to run on your preferred platform.
 
-Add more user interface to ui/index.html.
+Extending this project should be a case of adding your own functions to `internal/handlers/handlers.go` and user interface elements to `ui/index.html`. You can, of course, use and extend the AGENTS.md file with a suitable AI coding agent.
