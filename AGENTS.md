@@ -2,7 +2,7 @@ This Git repository should contain a Go application that compiles into a single 
 
 This Git repository is hosted on Github at: https://github.com/dhicks6345789/go-app
 
-The project homepage is at: https://users.sansay.co.uk/d.b.hicks/go-app/
+The project homepage is at: https://users.sansay.co.uk/d.b.hicks/go-app
 
 Do a "git pull" at the start of operations to make sure the local repository is up-to-date and then re-read AGENTS.md.
 
@@ -22,7 +22,7 @@ The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
 
-Generate an "index.html" file that includes the same information (transformed from Markdown to HTML) as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Do not include the generated index.html in the Git repository, exclude both it and the compiled executable files. Links used to the "docs" folder in index.html should be absolute, using the project homepage URL defined at the start of this document.
+Generate an "index.html" file that includes the same information (transformed from Markdown to HTML) as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Do not include the generated index.html in the Git repository, exclude both it and the compiled executable files. Links used to the "docs" folder in index.html should be relative, as I might move or re-host the project's homepage at some point.
 
 Make sure the "docs/api.html" file is generated.
 
