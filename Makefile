@@ -1,4 +1,4 @@
-.PHONY: all build build-ui build-all build-linux-amd64 build-windows-amd64 build-darwin-amd64 build-darwin-arm64 build-rpi-arm64 build-rpi-armv7 index run-desktop run-server clean test
+.PHONY: all build build-ui build-all build-linux-amd64 build-windows-amd64 build-darwin-amd64 build-darwin-arm64 build-rpi-arm64 build-rpi-armv7 index dist run-desktop run-server clean test
 
 OUT_DIR := dist
 
@@ -70,6 +70,16 @@ build-all: build-ui
 index:
 	@echo "==> Generating repository index.html..."
 	@python3 scripts/generate-index.py
+
+dist:
+	@if [ -z "$(DEST_DIR)" ]; then echo "Error: DEST_DIR not set. Usage: make dist DEST_DIR=/path/to/site"; exit 1; fi
+	@$(MAKE) build-all
+	@echo "==> Staging Distribution Files to $(DEST_DIR)..."
+	@mkdir -p $(DEST_DIR)/docs
+	@cp index.html $(DEST_DIR)/
+	@cp docs/* $(DEST_DIR)/docs/
+	@cp dist/* $(DEST_DIR)/
+	@echo "==> Distribution Complete: $(DEST_DIR)"
 
 run-desktop: build
 	@echo "==> Starting in Desktop Mode..."
