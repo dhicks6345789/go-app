@@ -37,6 +37,31 @@ And to docker compose, add:
 go-app -mode=server -port=8080
 ```
 
+## Building
+
+Clone the repository:
+
+```
+git clone https://github.com/dhicks6345789/go-app.git
+```
+
+And run build-all:
+
+```
+cd go-app
+make build-all
+```
+
+This will compile the executables for all platforms and generate documentation, including Swaggo's interactive API documentation. You can copy the generated files directly to somewhere they can be served as a web site:
+
+```
+mkdir -p ~/www/go-app
+mkdir -p ~/www/go-app/docs
+cp index.html ~/www/go-app
+cp docs/* ~/www/go-app/docs
+cp dist/* ~/www/go-app
+```
+
 ## Using As a Basis For Your Own Projects
 
 Add you own functions to internal/handlers/handlers.go.
