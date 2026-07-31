@@ -4,7 +4,7 @@ This Git repository is hosted on Github at: https://github.com/dhicks6345789/go-
 
 The project homepage is at: https://users.sansay.co.uk/d.b.hicks/go-app
 
-Do a "git pull" at the start of operations to make sure the local repository is up-to-date.
+Do a "git pull" at the start of operations to make sure the local repository is up-to-date and then re-read AGENTS.md.
 
 The application should be self-hostable by a home user. If run on a home desktop machine (Windows, MacOS, Linux, Raspberry Pi) the executable should start up the back-end server to listen on an available non-privileged port, and should then start up an available web browser to point at the user interface served by that back-end. In this operation mode, the application should only be available to the local web browser, it shouldn't accept traffic from the wider network, and user authentication should be by simply reading the username from the local environment.
 
@@ -20,7 +20,7 @@ The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
 
-Create an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Include index.html in the Git repository, but exclude the compiled executable files.
+Generate an "index.html" file that includes the same information as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. do not include the genrated index.html in the Git repository, exclude both it and the compiled executable files.
 
 Make sure the "docs/api.html" file is generated.
 
