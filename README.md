@@ -9,7 +9,7 @@ A project to act as an example framework to produce a self-hostable Go applicati
 - **Dual Operation Modes**:
   - **Desktop Mode**: Ideal for local home desktop use on pretty much any platform (Linux, MacOS, Windows, Raspberry Pi). Running the executable on your desktop machine should give you a localhost-only server and automatically launch your default web browser to display the user interface.
   - **Server Mode**: Suitable for multi-user deployment behind authenticating reverse proxies (Pangolin / Traefik, Cloudflare Tunnel, Authelia). Authenticates users via incoming proxy headers (`X-Forwarded-User`, `Remote-User`, `Pangolin-User`, etc.). As a single, statically linked Go binary with no external dependencies, it can be run inside a very minimal container environment.
-- **Built-in API Documentation**: Auto-renders Swagger UI for OpenAPI specifications directly at `/docs/api`. Built for use by AI agents - you should be able to point an AI agent 
+- **Built for use by humans and AI agents**: With built-in documentation and Swagger UI - you should be able to point an AI agent at the API documentation and have it start using it right away.
 
 ---
 
