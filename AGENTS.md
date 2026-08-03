@@ -14,11 +14,11 @@ The application should use Go's "embed" package to host all needed file resource
 
 The application should be able to operate on a machine without internet access. The user interface should be web-based, constructed using Bootstrap, with the Bootstrap library files served by the application itself. Don't use any other JavaScript libraries.
 
-The application should only need Go as a build tool. It can use a shell (bash) script to build. It shouldn't need to use Python.
+The application should only need Go as a build tool. It can use a shell (bash) script to build. It can use Swaggo to build the API documentation. It shouldn't need to use Python.
 
 The Go application should consist of one "main.go" file and one "api.go" file. All API calls go in the API.go file, everything else goes in main.go.
 
-The application should also work in a multi-user environment when hosted on a server (probably inside a minimal Docker container) behind a reverse proxy server (Pangolin / Traefik, Cloudflare Tunnel, Tailscale). In this case, the proxy server will handle user authentication and pass in a header value to give the current authenticated username.
+The application should also work in a multi-user environment when hosted on a server (probably inside a minimal Docker container) behind a reverse proxy server (Pangolin / Traefik, Cloudflare Tunnel, Authelia, Tailscale). In this case, the proxy server will handle user authentication and pass in a header value to give the current authenticated username.
 
 The application should serve its user interface from the root "/" endpoint.
 
