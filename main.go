@@ -1,11 +1,5 @@
 package main
 
-// @title           Go Self-Contained App API
-// @version         1.0.0
-// @description     API documentation for the self-contained Go application framework.
-// @host            localhost:8080
-// @BasePath        /api/v1
-
 import (
 	"embed"
 	"flag"
@@ -15,17 +9,16 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
-
-	"go-app/internal/auth"
-	"go-app/internal/browser"
-	"go-app/internal/handlers"
+	"time"
 )
 
-//go:embed ui/dist/*
+//go:embed all:ui
 var uiFS embed.FS
 
-//go:embed docs/swagger.json
+//go:embed docs/openapi.json
 var openAPISpec []byte
 
 func main() {
@@ -37,7 +30,17 @@ func main() {
 	mode := flag.String("mode", defaultMode, "Operation mode: 'desktop' or 'server'")
 	host := flag.String("host", defaultHost, "Host IP to bind to (defaults to 127.0.0.1 for desktop, 0.0.0.0 for server)")
 	noBrowser := flag.Bool("no-browser", false, "Disable automatic browser launch in desktop mode")
+	genDocs := flag.String("gen-docs", "", "Write the rendered API documentation HTML to the given path and exit")
 	flag.Parse()
+
+	// Offline documentation generation (used by the build script to produce docs/api.html).
+	if *genDocs != "" {
+		if err := os.WriteFile(*genDocs, renderDocsHTML(openAPISpec), 0o644); err != nil {
+			log.Fatalf("Failed to write docs to %s: %v", *genDocs, err)
+		}
+		log.Printf("Wrote API documentation to %s", *genDocs)
+		return
+	}
 
 	isServerMode := strings.ToLower(*mode) == "server"
 
@@ -52,22 +55,19 @@ func main() {
 
 	addr := net.JoinHostPort(bindHost, *port)
 
-	// API Handlers
-	apiHandler := handlers.NewAPIHandler(isServerMode, openAPISpec)
+	a := newAPI(isServerMode, openAPISpec)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/health", apiHandler.Health)
-	mux.HandleFunc("/api/v1/user", apiHandler.User)
-	mux.HandleFunc("/api/v1/info", apiHandler.Info)
-	mux.HandleFunc("GET /api/v1/items", apiHandler.ListItems)
-	mux.HandleFunc("POST /api/v1/items", apiHandler.CreateItem)
+	mux.HandleFunc("/api/v1/health", a.health)
+	mux.HandleFunc("/api/v1/user", a.user)
+	mux.HandleFunc("/api/v1/info", a.info)
+	mux.HandleFunc("GET /api/v1/items", a.listItems)
+	mux.HandleFunc("POST /api/v1/items", a.createItem)
 
-	// Docs handlers
-	mux.HandleFunc("/docs/api", apiHandler.ServeDocs)
-	mux.HandleFunc("/docs/api/", apiHandler.ServeDocs)
+	mux.HandleFunc("/docs/api", a.serveDocs)
+	mux.HandleFunc("/docs/api/", a.serveDocs)
 
-	// Static UI setup with SPA fallback
-	subFS, err := fs.Sub(uiFS, "ui/dist")
+	subFS, err := fs.Sub(uiFS, "ui")
 	if err != nil {
 		log.Fatalf("Failed to initialize embedded UI filesystem: %v", err)
 	}
@@ -97,10 +97,10 @@ func main() {
 		fileServer.ServeHTTP(w, r)
 	})
 
-	user := auth.GetUser(&http.Request{}, isServerMode)
+	user := a.getUser(&http.Request{})
 
 	log.Printf("==================================================")
-	log.Printf("⚡ Go Self-Contained App Starting")
+	log.Printf("Go Self-Contained App Starting")
 	log.Printf("Mode      : %s", strings.ToUpper(user.Mode))
 	log.Printf("User      : %s (%s)", user.Username, user.AuthType)
 	log.Printf("Listening : http://%s", addr)
@@ -112,7 +112,7 @@ func main() {
 		targetURL := fmt.Sprintf("http://127.0.0.1:%s", *port)
 		go func() {
 			log.Printf("Launching browser targeting %s...", targetURL)
-			if err := browser.Open(targetURL); err != nil {
+			if err := openBrowser(targetURL); err != nil {
 				log.Printf("Note: Could not open web browser automatically: %v", err)
 			}
 		}()
@@ -133,4 +133,25 @@ func getEnv(key, defaultValue string) string {
 		return val
 	}
 	return defaultValue
+}
+
+// openBrowser launches the system's default web browser at the given URL.
+func openBrowser(url string) error {
+	// Give the server a moment to start listening.
+	time.Sleep(100 * time.Millisecond)
+
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
+	}
+
+	return cmd.Start()
 }

@@ -1,9 +1,3 @@
-# Node / React
-ui/node_modules/
-ui/dist/
-ui/.vite/
-ui/.env.local
-
 # Go binary & temp files
 go-app
 go-app.exe
@@ -11,11 +5,13 @@ dist/
 *.log
 
 # Generated distribution page (deployed by external script)
-index.html
+/index.html
 
-# Python
-__pycache__/
-*.pyc
+# Hugo build output
+hugo/public/
+hugo/content/
+hugo/data/
+hugo/.hugo_build.lock
 
 # OS / Editor
 .DS_Store

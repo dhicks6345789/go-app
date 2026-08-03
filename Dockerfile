@@ -1,22 +1,13 @@
-# Stage 1: Build React Frontend
-FROM node:20-alpine AS ui-builder
-WORKDIR /app/ui
-COPY ui/package*.json ./
-RUN npm install
-COPY ui/ ./
-RUN npm run build
-
-# Stage 2: Build Go Binary
+# Stage 1: Build Go Binary
 FROM golang:1.24-alpine AS go-builder
 WORKDIR /app
 COPY go.mod ./
-COPY internal/ ./internal/
+COPY main.go api.go ./
+COPY ui/ ./ui/
 COPY docs/ ./docs/
-COPY main.go ./
-COPY --from=ui-builder /app/ui/dist ./ui/dist
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o go-app main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o go-app main.go api.go
 
-# Stage 3: Minimal Production Runtime
+# Stage 2: Minimal Production Runtime
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
