@@ -49,7 +49,7 @@ And run build-all:
 
 ```
 cd go-app
-make build-all
+bash build build-all
 ```
 
 This will compile the executables for all platforms and generate documentation, including Swaggo's interactive API documentation.
@@ -64,4 +64,4 @@ make dist DEST_DIR=~/www/go-app
 
 The entire purpose of this project is just to act as a basic starting point for a self-contained "app" that is easy for end users to run and use. It should produce executables able to run on your preferred platform. If you just compile and run the basic project you will get a minimal application that just reports back the username, useful to test your build process is working okay.
 
-Extending this project should be a case of cloning the Git repository and adding your own functions to `internal/handlers/handlers.go` and user interface elements to `ui/index.html`. You can, of course, use and extend the AGENTS.md file with a suitable AI coding agent.
+Extending this project should be a case of cloning the Git repository and adding your own functions to `api.go` and user interface elements to `ui/index.html`. You can, of course, use and extend the AGENTS.md file with a suitable AI coding agent.
