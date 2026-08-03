@@ -12,9 +12,11 @@ The application should be self-hostable by a home user. If run on a home desktop
 
 The application should use Go's "embed" package to host all needed file resources.
 
-The application should be able to operate on a machine without internet access. The user interface should be web-based, constructed using React, with the React library files served by the application itself.
+The application should be able to operate on a machine without internet access. The user interface should be web-based, constructed using Bootstrap, with the Bootstrap library files served by the application itself. Don't use any other JavaScript libraries.
 
-The application should also work in a multi-user environment when hosted on a server (probably inside a minimal Docker container) behind a reverse proxy server (Pangolin / Traefik, Cloudflare Tunnel). In this case, the proxy server will handle user authentication and pass in a header value to give the current authenticated username.
+The application should only need Go as a build tool. It can use a shell (bash) script to build.
+
+The application should also work in a multi-user environment when hosted on a server (probably inside a minimal Docker container) behind a reverse proxy server (Pangolin / Traefik, Cloudflare Tunnel, Tailscale). In this case, the proxy server will handle user authentication and pass in a header value to give the current authenticated username.
 
 The application should serve its user interface from the root "/" endpoint.
 
@@ -22,7 +24,7 @@ The application should serve its application logic from the "/api" endpoint.
 
 The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
 
-Generate an "index.html" file that includes the same information (transformed from Markdown to HTML) as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Do not include the generated index.html in the Git repository, exclude both it and the compiled executable files. Links used to the "docs" folder in index.html should be relative, as I might move or re-host the project's homepage at some point.
+Generate an "index.html" file that includes the same information (transformed from Markdown to HTML with the Hugo static site tool) as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Do not include the generated index.html in the Git repository, exclude both it and the compiled executable files. Links used to the "docs" folder in index.html should be relative, as I might move or re-host the project's homepage at some point.
 
 Make sure the "docs/api.html" file is generated.
 
