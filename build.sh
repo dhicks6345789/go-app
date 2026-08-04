@@ -158,7 +158,7 @@ dist() {
   echo "==> Staging distribution files to $dest..."
   mkdir -p "$dest/docs"
   cp index.html "$dest/"
-  cp docs/* "$dest/docs/"
+  cp -r docs/* "$dest/docs/"
   cp dist/* "$dest/"
   echo "==> Distribution complete: $dest"
 }
