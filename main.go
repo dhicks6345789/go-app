@@ -18,8 +18,8 @@ import (
 //go:embed all:ui
 var uiFS embed.FS
 
-//go:embed docs/swagger.json
-var openAPISpec []byte
+//go:embed all:docs
+var docsFS embed.FS
 
 func main() {
 	defaultPort := getEnv("PORT", "8080")
@@ -30,12 +30,12 @@ func main() {
 	mode := flag.String("mode", defaultMode, "Operation mode: 'desktop' or 'server'")
 	host := flag.String("host", defaultHost, "Host IP to bind to (defaults to 127.0.0.1 for desktop, 0.0.0.0 for server)")
 	noBrowser := flag.Bool("no-browser", false, "Disable automatic browser launch in desktop mode")
-	genDocs := flag.String("gen-docs", "", "Write the rendered API documentation HTML to the given path and exit")
+	genDocs := flag.String("gen-docs", "", "Write the Swagger UI documentation page to the given path and exit")
 	flag.Parse()
 
 	// Offline documentation generation (used by the build script to produce docs/api.html).
 	if *genDocs != "" {
-		if err := os.WriteFile(*genDocs, renderDocsHTML(openAPISpec), 0o644); err != nil {
+		if err := os.WriteFile(*genDocs, swaggerUIHTML(), 0o644); err != nil {
 			log.Fatalf("Failed to write docs to %s: %v", *genDocs, err)
 		}
 		log.Printf("Wrote API documentation to %s", *genDocs)
@@ -55,7 +55,7 @@ func main() {
 
 	addr := net.JoinHostPort(bindHost, *port)
 
-	a := newAPI(isServerMode, openAPISpec)
+	a := newAPI(isServerMode, docsFS)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/health", a.health)
@@ -65,7 +65,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/items", a.createItem)
 
 	mux.HandleFunc("/docs/api", a.serveDocs)
-	mux.HandleFunc("/docs/api/", a.serveDocs)
+	mux.HandleFunc("/docs/", a.serveDocs)
 
 	subFS, err := fs.Sub(uiFS, "ui")
 	if err != nil {

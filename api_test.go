@@ -9,7 +9,7 @@ import (
 )
 
 func TestHealthEndpoint(t *testing.T) {
-	a := newAPI(false, []byte("{}"))
+	a := newAPI(false, docsFS)
 	req := httptest.NewRequest("GET", "/api/v1/health", nil)
 	rr := httptest.NewRecorder()
 
@@ -31,7 +31,7 @@ func TestHealthEndpoint(t *testing.T) {
 
 func TestUserEndpointDesktop(t *testing.T) {
 	t.Setenv("USER", "tester")
-	a := newAPI(false, []byte("{}"))
+	a := newAPI(false, docsFS)
 	req := httptest.NewRequest("GET", "/api/v1/user", nil)
 	rr := httptest.NewRecorder()
 
@@ -55,7 +55,7 @@ func TestUserEndpointDesktop(t *testing.T) {
 }
 
 func TestUserEndpointServerProxyHeader(t *testing.T) {
-	a := newAPI(true, []byte("{}"))
+	a := newAPI(true, docsFS)
 	req := httptest.NewRequest("GET", "/api/v1/user", nil)
 	req.Header.Set("Remote-User", "alice_proxy")
 	rr := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestUserEndpointServerProxyHeader(t *testing.T) {
 }
 
 func TestUserEndpointServerNoHeader(t *testing.T) {
-	a := newAPI(true, []byte("{}"))
+	a := newAPI(true, docsFS)
 	req := httptest.NewRequest("GET", "/api/v1/user", nil)
 	rr := httptest.NewRecorder()
 
@@ -94,7 +94,7 @@ func TestUserEndpointServerNoHeader(t *testing.T) {
 
 func TestItemsCRUD(t *testing.T) {
 	t.Setenv("USER", "tester")
-	a := newAPI(false, []byte("{}"))
+	a := newAPI(false, docsFS)
 
 	// Test GET items
 	reqGet := httptest.NewRequest("GET", "/api/v1/items", nil)
@@ -136,7 +136,7 @@ func TestItemsCRUD(t *testing.T) {
 }
 
 func TestServeDocs(t *testing.T) {
-	a := newAPI(false, []byte(`{"openapi":"3.0.3","info":{"title":"Test API","version":"1.0.0"},"paths":{}}`))
+	a := newAPI(false, docsFS)
 	req := httptest.NewRequest("GET", "/docs/api", nil)
 	rr := httptest.NewRecorder()
 
@@ -148,15 +148,14 @@ func TestServeDocs(t *testing.T) {
 	if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
 		t.Errorf("expected text/html content type, got %q", ct)
 	}
-	if !bytes.Contains(rr.Body.Bytes(), []byte("Test API")) {
-		t.Errorf("expected docs page to contain API title")
+	if !bytes.Contains(rr.Body.Bytes(), []byte("swagger-ui")) {
+		t.Errorf("expected docs page to load Swagger UI")
 	}
 }
 
 func TestServeOpenAPISpec(t *testing.T) {
-	spec := []byte(`{"openapi":"3.0.3","info":{"title":"Test API","version":"1.0.0"},"paths":{}}`)
-	a := newAPI(false, spec)
-	req := httptest.NewRequest("GET", "/docs/api/openapi.json", nil)
+	a := newAPI(false, docsFS)
+	req := httptest.NewRequest("GET", "/docs/swagger.json", nil)
 	rr := httptest.NewRecorder()
 
 	a.serveDocs(rr, req)
@@ -167,7 +166,25 @@ func TestServeOpenAPISpec(t *testing.T) {
 	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
 		t.Errorf("expected application/json content type, got %q", ct)
 	}
-	if !bytes.Equal(rr.Body.Bytes(), spec) {
-		t.Errorf("expected raw spec to be served unchanged")
+	if !bytes.Contains(rr.Body.Bytes(), []byte(`"swagger": "2.0"`)) {
+		t.Errorf("expected OpenAPI specification to be served")
+	}
+}
+
+func TestServeSwaggerUIAsset(t *testing.T) {
+	a := newAPI(false, docsFS)
+	req := httptest.NewRequest("GET", "/docs/swagger-ui/swagger-ui.css", nil)
+	rr := httptest.NewRecorder()
+
+	a.serveDocs(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("asset handler returned wrong status code: got %v want %v", status, http.StatusOK)
+	}
+	if ct := rr.Header().Get("Content-Type"); ct != "text/css; charset=utf-8" {
+		t.Errorf("expected text/css content type, got %q", ct)
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte("swagger-ui")) {
+		t.Errorf("expected Swagger UI stylesheet to be served")
 	}
 }
