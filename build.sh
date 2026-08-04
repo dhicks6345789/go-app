@@ -49,6 +49,23 @@ build_all() {
 }
 
 api_docs() {
+  echo "==> Generating OpenAPI spec with Swaggo..."
+  local swag_bin
+  swag_bin="$(command -v swag || true)"
+  if [ -z "$swag_bin" ]; then
+    local gobin
+    gobin="$(go env GOBIN)"
+    [ -z "$gobin" ] && gobin="$(go env GOPATH)/bin"
+    if [ -x "$gobin/swag" ]; then
+      swag_bin="$gobin/swag"
+    else
+      echo "swag not found; installing it with Go..."
+      go install github.com/swaggo/swag/cmd/swag@latest
+      swag_bin="$gobin/swag"
+    fi
+  fi
+  "$swag_bin" init -g api.go -d . -o docs --outputTypes json --useStructName --quiet
+  echo "==> Generated: docs/swagger.json"
   echo "==> Generating docs/api.html..."
   go run . -gen-docs docs/api.html
   echo "==> Generated: docs/api.html"

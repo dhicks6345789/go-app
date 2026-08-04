@@ -18,7 +18,7 @@ import (
 //go:embed all:ui
 var uiFS embed.FS
 
-//go:embed docs/openapi.json
+//go:embed docs/swagger.json
 var openAPISpec []byte
 
 func main() {

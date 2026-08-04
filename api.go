@@ -22,14 +22,39 @@ type Item struct {
 
 // CreateItemRequest is the payload accepted when creating a new item.
 type CreateItemRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" validate:"required" example:"Sample Item"`
 }
 
 // UserInfo describes the currently authenticated user.
 type UserInfo struct {
-	Username string `json:"username"`
-	AuthType string `json:"auth_type"`
-	Mode     string `json:"mode"`
+	Username string `json:"username" example:"alice"`
+	AuthType string `json:"auth_type" example:"local_env"`
+	Mode     string `json:"mode" example:"desktop"`
+}
+
+// HealthResponse describes the service health status.
+type HealthResponse struct {
+	Status    string `json:"status" example:"ok"`
+	Timestamp string `json:"timestamp" example:"2026-08-04T12:00:00Z"`
+}
+
+// SystemInfoResponse describes system information.
+type SystemInfoResponse struct {
+	Mode      string `json:"mode" example:"desktop"`
+	GoVersion string `json:"go_version" example:"go1.24.4"`
+	OS        string `json:"os" example:"linux"`
+	Arch      string `json:"arch" example:"amd64"`
+	Uptime    string `json:"uptime" example:"12m30s"`
+}
+
+// ItemsResponse is the payload returned when listing items.
+type ItemsResponse struct {
+	Items []Item `json:"items"`
+}
+
+// ErrorResponse describes an error payload.
+type ErrorResponse struct {
+	Error string `json:"error" example:"Invalid request payload"`
 }
 
 // proxyHeaders lists headers set by authenticating reverse proxies
@@ -53,6 +78,9 @@ type api struct {
 	openAPISpec  []byte
 }
 
+// @title Go Self-Contained App API
+// @description API documentation for the self-contained Go application framework.
+// @version 1.0.0
 func newAPI(isServerMode bool, openAPISpec []byte) *api {
 	return &api{
 		startTime:    time.Now(),
@@ -109,6 +137,11 @@ func (a *api) getUser(r *http.Request) UserInfo {
 }
 
 // health returns the operational status of the service.
+// @Summary Health Check
+// @Description Returns operational status of the service.
+// @Produce json
+// @Success 200 {object} HealthResponse "Healthy response"
+// @Router /api/v1/health [get]
 func (a *api) health(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -118,12 +151,22 @@ func (a *api) health(w http.ResponseWriter, r *http.Request) {
 }
 
 // user returns the currently authenticated user.
+// @Summary Get Current User
+// @Description Returns authenticated user info based on environment or proxy headers.
+// @Produce json
+// @Success 200 {object} UserInfo
+// @Router /api/v1/user [get]
 func (a *api) user(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(a.getUser(r))
 }
 
 // info returns system information such as mode, Go version, OS/Arch and uptime.
+// @Summary System Info
+// @Description Returns system metrics, Go version, OS/Arch, and uptime.
+// @Produce json
+// @Success 200 {object} SystemInfoResponse
+// @Router /api/v1/info [get]
 func (a *api) info(w http.ResponseWriter, r *http.Request) {
 	mode := "desktop"
 	if a.isServerMode {
@@ -141,6 +184,11 @@ func (a *api) info(w http.ResponseWriter, r *http.Request) {
 }
 
 // listItems returns all stored items.
+// @Summary List Items
+// @Description Returns all stored items.
+// @Produce json
+// @Success 200 {object} ItemsResponse
+// @Router /api/v1/items [get]
 func (a *api) listItems(w http.ResponseWriter, r *http.Request) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
@@ -151,6 +199,14 @@ func (a *api) listItems(w http.ResponseWriter, r *http.Request) {
 }
 
 // createItem creates a new item and returns it.
+// @Summary Create Item
+// @Description Creates a new item.
+// @Accept json
+// @Produce json
+// @Param body body CreateItemRequest true "Item to create"
+// @Success 201 {object} Item
+// @Failure 400 {object} ErrorResponse
+// @Router /api/v1/items [post]
 func (a *api) createItem(w http.ResponseWriter, r *http.Request) {
 	var req CreateItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
@@ -206,34 +262,43 @@ type openAPISchema struct {
 }
 
 type openAPIParameter struct {
-	Name        string        `json:"name"`
-	In          string        `json:"in"`
-	Description string        `json:"description"`
-	Required    bool          `json:"required"`
-	Schema      openAPISchema `json:"schema"`
+	Name        string         `json:"name"`
+	In          string         `json:"in"`
+	Description string         `json:"description"`
+	Required    bool           `json:"required"`
+	Schema      openAPISchema  `json:"schema"`
+	Type        string         `json:"type"`
+	Format      string         `json:"format"`
+	Items       *openAPISchema `json:"items"`
 }
 
 type openAPIContent map[string]struct {
 	Schema openAPISchema `json:"schema"`
 }
 
+type openAPIResponse struct {
+	Description string         `json:"description"`
+	Schema      openAPISchema  `json:"schema"`
+	Content     openAPIContent `json:"content"`
+}
+
 type openAPIOperation struct {
 	Summary     string             `json:"summary"`
 	Description string             `json:"description"`
+	Consumes    []string           `json:"consumes"`
+	Produces    []string           `json:"produces"`
 	Parameters  []openAPIParameter `json:"parameters"`
 	RequestBody struct {
 		Description string         `json:"description"`
 		Required    bool           `json:"required"`
 		Content     openAPIContent `json:"content"`
 	} `json:"requestBody"`
-	Responses map[string]struct {
-		Description string         `json:"description"`
-		Content     openAPIContent `json:"content"`
-	} `json:"responses"`
+	Responses map[string]openAPIResponse `json:"responses"`
 }
 
 type openAPIDocument struct {
 	OpenAPI string `json:"openapi"`
+	Swagger string `json:"swagger"`
 	Info    struct {
 		Title       string `json:"title"`
 		Description string `json:"description"`
@@ -243,10 +308,13 @@ type openAPIDocument struct {
 		URL         string `json:"url"`
 		Description string `json:"description"`
 	} `json:"servers"`
+	Host       string                                 `json:"host"`
+	BasePath   string                                 `json:"basePath"`
 	Paths      map[string]map[string]openAPIOperation `json:"paths"`
 	Components struct {
 		Schemas map[string]openAPISchema `json:"schemas"`
 	} `json:"components"`
+	Definitions map[string]openAPISchema `json:"definitions"`
 }
 
 var methodOrder = []string{"get", "post", "put", "patch", "delete"}
@@ -263,10 +331,36 @@ func esc(s string) string {
 	return html.EscapeString(s)
 }
 
+// refName returns the bare schema name for a $ref, accepting both
+// OpenAPI 3 "components" and Swagger 2 "definitions" references.
+func refName(ref string) string {
+	for _, prefix := range []string{"#/components/schemas/", "#/definitions/"} {
+		if strings.HasPrefix(ref, prefix) {
+			return strings.TrimPrefix(ref, prefix)
+		}
+	}
+	return ref
+}
+
+// hasSchema reports whether a schema carries any real information.
+func hasSchema(s openAPISchema) bool {
+	return s.Ref != "" || s.Type != "" || len(s.Properties) > 0 || s.Items != nil
+}
+
+// paramSchema returns the schema describing a parameter, handling both
+// Swagger 2 non-body parameters (type at parameter level) and OpenAPI 3
+// parameters (schema object).
+func paramSchema(p openAPIParameter) openAPISchema {
+	if hasSchema(p.Schema) {
+		return p.Schema
+	}
+	return openAPISchema{Type: p.Type, Format: p.Format, Items: p.Items}
+}
+
 // schemaInline renders a schema as plain text, dereferencing $refs by name.
 func schemaInline(s openAPISchema) string {
 	if s.Ref != "" {
-		return strings.TrimPrefix(s.Ref, "#/components/schemas/")
+		return refName(s.Ref)
 	}
 	t := s.Type
 	if t == "array" && s.Items != nil {
@@ -296,10 +390,30 @@ func schemaInline(s openAPISchema) string {
 // schemaHTML renders a schema as HTML, linking $refs to their definitions.
 func schemaHTML(s openAPISchema) string {
 	if s.Ref != "" {
-		name := strings.TrimPrefix(s.Ref, "#/components/schemas/")
+		name := refName(s.Ref)
 		return `<a href="#schema-` + esc(name) + `">` + esc(name) + `</a>`
 	}
 	return "<code>" + esc(schemaInline(s)) + "</code>"
+}
+
+// responseContentHTML renders the content types and schema of a response,
+// falling back to Swagger 2 "produces"/"schema" fields when the OpenAPI 3
+// "content" object is absent.
+func responseContentHTML(op openAPIOperation, resp openAPIResponse) string {
+	if len(resp.Content) > 0 {
+		return contentHTML(resp.Content)
+	}
+	if !hasSchema(resp.Schema) {
+		return "-"
+	}
+	if len(op.Produces) > 0 {
+		parts := make([]string, 0, len(op.Produces))
+		for _, mt := range op.Produces {
+			parts = append(parts, "<code>"+esc(mt)+"</code> "+schemaHTML(resp.Schema))
+		}
+		return strings.Join(parts, "<br/>")
+	}
+	return "<code>application/json</code> " + schemaHTML(resp.Schema)
 }
 
 func contentHTML(c openAPIContent) string {
@@ -375,8 +489,15 @@ a:hover { text-decoration: underline; }
 	if version == "" {
 		version = "-"
 	}
+	specVersion := doc.OpenAPI
+	if specVersion == "" {
+		specVersion = doc.Swagger
+	}
+	if specVersion == "" {
+		specVersion = "-"
+	}
 	b.WriteString(`<h2>Overview</h2>`)
-	b.WriteString(`<p><strong>Version:</strong> ` + esc(version) + ` &middot; <strong>Spec:</strong> OpenAPI ` + esc(doc.OpenAPI) + `</p>`)
+	b.WriteString(`<p><strong>Version:</strong> ` + esc(version) + ` &middot; <strong>Spec:</strong> OpenAPI ` + esc(specVersion) + `</p>`)
 	if doc.Info.Description != "" {
 		b.WriteString(`<p>` + esc(doc.Info.Description) + `</p>`)
 	}
@@ -392,8 +513,10 @@ a:hover { text-decoration: underline; }
 		}
 		b.WriteString(strings.Join(servers, " "))
 		b.WriteString(`</p>`)
+	} else if doc.Host != "" || doc.BasePath != "" {
+		b.WriteString(`<p><strong>Servers:</strong> <code>` + esc(doc.Host+doc.BasePath) + `</code></p>`)
 	}
-	b.WriteString(`<p><a href="openapi.json" download>Download OpenAPI specification (openapi.json)</a></p>`)
+	b.WriteString(`<p><a href="swagger.json" download>Download OpenAPI specification (swagger.json)</a></p>`)
 
 	b.WriteString(`<h2>Endpoints</h2>`)
 	paths := make([]string, 0, len(doc.Paths))
@@ -434,15 +557,26 @@ a:hover { text-decoration: underline; }
 				b.WriteString(`<p class="ep-desc">` + esc(op.Description) + `</p>`)
 			}
 
-			if len(op.Parameters) > 0 {
+			nonBodyParams := make([]openAPIParameter, 0)
+			var bodyParam *openAPIParameter
+			for i := range op.Parameters {
+				if op.Parameters[i].In == "body" {
+					p := op.Parameters[i]
+					bodyParam = &p
+				} else {
+					nonBodyParams = append(nonBodyParams, op.Parameters[i])
+				}
+			}
+
+			if len(nonBodyParams) > 0 {
 				b.WriteString(`<div class="subhead">Parameters</div>`)
 				b.WriteString(`<table><tr><th>Name</th><th>In</th><th>Required</th><th>Type</th><th>Description</th></tr>`)
-				for _, p := range op.Parameters {
+				for _, p := range nonBodyParams {
 					required := "no"
 					if p.Required {
 						required = "yes"
 					}
-					b.WriteString(`<tr><td><code>` + esc(p.Name) + `</code></td><td>` + esc(p.In) + `</td><td>` + required + `</td><td>` + schemaHTML(p.Schema) + `</td><td>` + esc(p.Description) + `</td></tr>`)
+					b.WriteString(`<tr><td><code>` + esc(p.Name) + `</code></td><td>` + esc(p.In) + `</td><td>` + required + `</td><td>` + schemaHTML(paramSchema(p)) + `</td><td>` + esc(p.Description) + `</td></tr>`)
 				}
 				b.WriteString(`</table>`)
 			}
@@ -461,6 +595,23 @@ a:hover { text-decoration: underline; }
 					b.WriteString(`<p>` + esc(desc) + `</p>`)
 				}
 				b.WriteString(`<p>` + contentHTML(req.Content) + `</p>`)
+			} else if bodyParam != nil {
+				b.WriteString(`<div class="subhead">Request Body</div>`)
+				desc := bodyParam.Description
+				if bodyParam.Required {
+					if desc != "" {
+						desc += " "
+					}
+					desc += "(required)"
+				}
+				if desc != "" {
+					b.WriteString(`<p>` + esc(desc) + `</p>`)
+				}
+				mediaType := "application/json"
+				if len(op.Consumes) > 0 {
+					mediaType = op.Consumes[0]
+				}
+				b.WriteString(`<p><code>` + esc(mediaType) + `</code> ` + schemaHTML(paramSchema(*bodyParam)) + `</p>`)
 			}
 
 			b.WriteString(`<div class="subhead">Responses</div>`)
@@ -472,22 +623,26 @@ a:hover { text-decoration: underline; }
 			b.WriteString(`<table><tr><th>Code</th><th>Description</th><th>Content</th></tr>`)
 			for _, code := range codes {
 				resp := op.Responses[code]
-				b.WriteString(`<tr><td><code>` + esc(code) + `</code></td><td>` + esc(resp.Description) + `</td><td>` + contentHTML(resp.Content) + `</td></tr>`)
+				b.WriteString(`<tr><td><code>` + esc(code) + `</code></td><td>` + esc(resp.Description) + `</td><td>` + responseContentHTML(op, resp) + `</td></tr>`)
 			}
 			b.WriteString(`</table>`)
 			b.WriteString(`</div>`)
 		}
 	}
 
-	if len(doc.Components.Schemas) > 0 {
+	schemas := doc.Components.Schemas
+	if len(schemas) == 0 {
+		schemas = doc.Definitions
+	}
+	if len(schemas) > 0 {
 		b.WriteString(`<h2>Schemas</h2>`)
-		names := make([]string, 0, len(doc.Components.Schemas))
-		for name := range doc.Components.Schemas {
+		names := make([]string, 0, len(schemas))
+		for name := range schemas {
 			names = append(names, name)
 		}
 		sort.Strings(names)
 		for _, name := range names {
-			s := doc.Components.Schemas[name]
+			s := schemas[name]
 			b.WriteString(`<div class="schema"><h3 id="schema-` + esc(name) + `">` + esc(name) + `</h3>`)
 			b.WriteString(`<p>Type: <code>` + esc(schemaInline(s)) + `</code></p>`)
 			if s.Description != "" {
