@@ -26,16 +26,23 @@ Simply download and run the executable for your platform from the [project homep
 You can run Go App behind an authenticating proxy server - the proxy server handles HTTPS, authenticates the user and passes the username to the application via a simple HTTP header. As the executable is compiled with CGO disabled (CGO_ENABLED=0) and the proxy server is dealing with HTTPS, the container environment can use the `scratch` container image. For instance, if you were using Pangolin as your authenticating server, you would add a basic Dockerfile:
 
 ```
+# Note: the "scratch" image is 0 bytes, it doesn't have tools like chmod, so there's some extra steps
+# needed to get executable files inside a "scratch" image. We need to build a "downloader" image...
+FROM alpine:latest AS downloader
+RUN apk add --no-cache curl && \
+    curl -L https://www.sansay.co.uk/go-app/go-app-linux-amd64 -o /go-app && \
+    chmod +x /go-app
+
+# ...then use that to build the actual image we want.
 FROM scratch
-ADD https://www.sansay.co.uk/go-app/go-app-linux-amd64 /usr/local/bin/go-app
-RUN chmod +x /usr/local/bin/go-app
+COPY --from=downloader /go-app /gp-app
+
 ```
 And to docker compose, add something like:
-
 ```
 goapp:
     image: GO_APP_IMAGE
-    command: /usr/local/bin/go-app -mode=server -port=8080
+    command: /go-app -mode=server -port=8080
     container_name: goapp
     restart: unless-stopped
 ```
