@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadUser() {
     try {
-      const data = await fetchJSON('/api/v1/user');
+      const data = await fetchJSON('api/v1/user');
       userName.textContent = data.username;
       userMode.textContent = `${data.mode} mode (${data.auth_type})`;
       infoUser.textContent = data.username;
@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadSystemInfo() {
     try {
-      const data = await fetchJSON('/api/v1/info');
+      const data = await fetchJSON('api/v1/info');
       infoMode.textContent = data.mode;
       infoGo.textContent = data.go_version;
       infoOs.textContent = `${data.os}/${data.arch}`;
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadItems() {
     try {
-      const data = await fetchJSON('/api/v1/items');
+      const data = await fetchJSON('api/v1/items');
       const items = data.items || [];
       itemsCount.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
       itemsList.innerHTML = '';
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = itemName.value.trim();
     if (!name) return;
     try {
-      const data = await fetchJSON('/api/v1/items', {
+      const data = await fetchJSON('api/v1/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
