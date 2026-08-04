@@ -16,7 +16,7 @@ The application should be able to operate on a machine without internet access. 
 
 The application should only need Go as a build tool. It can use a shell (bash) script to build. It should use Swaggo to build the API documentation. It shouldn't need to use Python.
 
-The Go application should consist of one "main.go" file and one "api.go" file. All API calls go in the API.go file, everything else goes in main.go.
+The Go application should consist of one "main.go" file and one "api.go" file, with an additional api_test.go file. All API calls go in the API.go file, tests go in api_test.go, everything else goes in main.go.
 
 The application should also work in a multi-user environment when hosted on a server (probably inside a minimal Docker container) behind a reverse proxy server (Pangolin / Traefik, Cloudflare Tunnel, Authelia, Tailscale). In this case, the proxy server will handle user authentication and pass in a header value to give the current authenticated username.
 
