@@ -74,8 +74,8 @@ bash build.sh dist ~/www/go-app
 
 ## Using As a Basis For Your Own Projects
 
-The entire purpose of this project is to act as a basic starting point for a self-contained "app" that is easy for end users to run and use. It should produce executables able to run on your preferred platform, either as a "desktop app" (a local-only server with a web interface) or as a compact server. If you just compile and run the basic project you will get a minimal application that just reports back the username, useful to test your build process and that any authentication / endpoint routing is working okay.
+The purpose of this project is to act as a basic starting point for a self-contained "app" that is easy for end users to run and use. It should produce executables able to run on your preferred platform, either as a "desktop app" (a local-only server with a web interface) or as a compact server. If you just compile and run the basic project you will get a minimal application that just reports back the username, useful to test your build process and that any authentication / endpoint routing is working okay.
 
 Extending this project should be a case of cloning the Git repository and adding your own functions to `api.go` and user interface elements to `ui/index.html`.
 
-This project was built using OpenCode and its "Big Pickle" model (free, as of August 2026), an instance of GLM-4.6. You can, of course, use and extend the AGENTS.md file with any suitable AI coding agent.
+This project was built using OpenCode and its "Big Pickle" model (free, as of August 2026), an instance of GLM-4.6. Documentation (this README) was written by hand. You can, of course, use and extend the AGENTS.md file with any suitable AI coding agent.
