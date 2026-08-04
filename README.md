@@ -6,11 +6,11 @@ This application itself doesn't do anything much, it just presents a basic user 
 
 ## Features
 
-- **Single Executable Deployment**: Uses Go's `embed` package to bundle the frontend React assets, documentation and OpenAPI specifications into a single binary.
+- **Single Executable Deployment**: Uses Go's `embed` package to bundle the frontend HTML / CSS / JavaScript assets, documentation and OpenAPI specifications into a single binary.
 - **Offline Operation**: Designed to be able to operate without internet access; all UI libraries and documentation resources are served locally.
 - **Dual Operation Modes**:
   - **Desktop Mode**: Ideal for local home desktop use on pretty much any platform (Linux, MacOS, Windows, Raspberry Pi). Running the executable on your desktop machine should give you a localhost-only server and automatically launch your default web browser to display the user interface.
-  - **Server Mode**: Suitable for multi-user deployment behind authenticating reverse proxies (Pangolin / Traefik, Cloudflare Tunnel, Authelia, Tailscale). Authenticates users via incoming proxy headers (`X-Forwarded-User`, `Remote-User`, `Pangolin-User`, etc.). As a single, statically linked Go binary with no external dependencies, it can be run inside a very minimal container environment.
+  - **Server Mode**: Suitable for multi-user deployment behind authenticating reverse proxies (Pangolin / Traefik, Cloudflare Tunnel, Authelia, Tailscale, etc). Authenticates users via incoming proxy headers (`X-Forwarded-User`, `Remote-User`, `Pangolin-User`, etc.). As a single, statically linked Go binary with no external dependencies, it can be run inside a very minimal container environment.
 - **Built for use by humans and AI agents**: With built-in documentation and Swagger UI - you should be able to point an AI agent at the API documentation and have it start using it right away.
 
 ---
@@ -54,7 +54,7 @@ And run build-all:
 
 ```
 cd go-app
-bash build build-all
+bash build.sh build-all
 ```
 
 This will compile the executables for all platforms and generate documentation, including Swaggo's interactive API documentation.
@@ -62,7 +62,7 @@ This will compile the executables for all platforms and generate documentation, 
 You can copy the generated files directly to somewhere they can be served as a web site, you just need to specify the path you want the files to go to, e.g.:
 
 ```
-make dist DEST_DIR=~/www/go-app
+bash build.sh dist ~/www/go-app
 ```
 
 ## Using As a Basis For Your Own Projects
