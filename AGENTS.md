@@ -16,7 +16,7 @@ The application should be able to operate on a machine without internet access. 
 
 The application should only need Go as a build tool. It can use a shell (bash) script to build. It should use Swaggo to build the API documentation. It shouldn't need to use Python.
 
-The Go application should consist of one "main.go" file and one "api.go" file, with an additional api_test.go file. All API calls go in the API.go file, tests go in api_test.go, everything else goes in main.go.
+The Go application should consist of one "main.go" file and one "api.go" file, with an additional api_test.go file. All API calls go in the API.go file, API tests go in api_test.go, everything else goes in main.go.
 
 The application should also work in a multi-user environment when hosted on a server (probably inside a minimal Docker container) behind a reverse proxy server (Pangolin / Traefik, Cloudflare Tunnel, Authelia, Tailscale). In this case, the proxy server will handle user authentication and pass in a header value to give the current authenticated username.
 
@@ -24,7 +24,7 @@ The application should serve its user interface from the root "/" endpoint.
 
 The application should serve its application logic from the "/api" endpoint.
 
-The application should serve auto-generated OpenAPI documentation from the "docs/api" endpoint.
+The application should serve auto-generated OpenAPI documentation from the "/docs/api" endpoint.
 
 Generate an "index.html" file that includes the same information (transformed from Markdown to HTML with the Hugo static site tool) as README.md to explain and document the project to the public. Include links to live, downloadable executables for each platform. Include a link in index.html to the Github project. Do not include the generated index.html in the Git repository, exclude both it and the compiled executable files. Links used to the "docs" folder in index.html should be relative, as I might move or re-host the project's homepage at some point.
 
