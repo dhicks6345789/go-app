@@ -23,19 +23,24 @@ Simply download and run the executable for your platform from the [project homep
 
 ### Server
 
-You can run Go App behind an authenticating proxy server - the proxy server authenticates the user and passes the username to the application via a simple HTTP header. For instance, if you were using Pangolin as your authenticating server, you would add a basic container to hold the Go App executable:
+You can run Go App behind an authenticating proxy server - the proxy server handles HTTPS, authenticates the user and passes the username to the application via a simple HTTP header. As the executable is compiled with CGO disabled (CGO_ENABLED=0) and the proxy server is dealing with HTTPS, the container environment can use the `scratch` container image. For instance, if you were using Pangolin as your authenticating server, you would add a basic Dockerfile:
 
 ```
-FROM alpine:latest
-RUN apk add --no-cache ca-certificates tzdata
-WORKDIR /app
-COPY --from=go-builder /app/go-app /app/go-app
+FROM scratch
+ADD https://www.sansay.co.uk/go-app/go-app-linux-amd64 /usr/local/bin/go-app
+RUN chmod +x /usr/local/bin/go-app
 ```
-And to docker compose, add:
+And to docker compose, add something like:
 
 ```
-go-app -mode=server -port=8080
+goapp:
+    image: GO_APP_IMAGE
+    command: /usr/local/bin/go-app -mode=server -port=8080
+    container_name: goapp
+    restart: unless-stopped
 ```
+
+From the Pangolin control panel you would then create a resource, using whatever authentication and access controls you like, that pointed at that container (`goapp:8080`).
 
 ## Building
 
