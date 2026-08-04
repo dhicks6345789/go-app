@@ -6,14 +6,14 @@
   <title>Go Application Release Distribution</title>
   <style>
     :root {
-      --bg-color: #0f172a;
-      --card-bg: #1e293b;
-      --border-color: #334155;
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
-      --accent-color: #38bdf8;
-      --accent-hover: #0284c7;
-      --code-bg: #090d16;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --accent-color: #2563eb;
+      --accent-hover: #1d4ed8;
+      --code-bg: #f1f5f9;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -28,7 +28,7 @@
     header h1 {
       font-size: 2.5rem;
       font-weight: 700;
-      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 0.5rem;
@@ -60,7 +60,7 @@
       display: inline-block;
       text-align: center;
       background: var(--accent-color);
-      color: #0f172a;
+      color: #ffffff;
       font-weight: 600;
       padding: 0.6rem 1rem;
       border-radius: 8px;
@@ -72,16 +72,16 @@
     .docs-section h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--accent-color); }
     .docs-section h2 { font-size: 1.5rem; margin: 1.5rem 0 1rem 0; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
     .docs-section h3 { font-size: 1.2rem; margin: 1.2rem 0 0.5rem 0; }
-    .docs-section p { margin-bottom: 1rem; color: #cbd5e1; }
-    .docs-section ul { margin-left: 1.5rem; margin-bottom: 1rem; color: #cbd5e1; }
+    .docs-section p { margin-bottom: 1rem; color: var(--text-primary); }
+    .docs-section ul { margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-primary); }
     .docs-section li { margin-bottom: 0.4rem; }
     pre { background: var(--code-bg); padding: 1rem; border-radius: 8px; overflow-x: auto; border: 1px solid var(--border-color); margin-bottom: 1.2rem; }
-    code { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.9rem; color: #e2e8f0; }
+    code { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 0.9rem; color: #334155; }
     p code, li code { background: var(--code-bg); padding: 0.2rem 0.4rem; border-radius: 4px; color: var(--accent-color); }
     .table-container { overflow-x: auto; margin-bottom: 1.5rem; }
     table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
     th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-    th { background: rgba(255, 255, 255, 0.05); color: var(--accent-color); font-weight: 600; }
+    th { background: var(--code-bg); color: var(--accent-color); font-weight: 600; }
     a { color: var(--accent-color); text-decoration: none; }
     a:hover { text-decoration: underline; }
     .github-link {
