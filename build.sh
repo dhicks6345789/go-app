@@ -115,8 +115,24 @@ dist() {
   local dest="${DEST_DIR:-${1:-}}"
   if [ -z "$dest" ]; then
     echo "Error: DEST_DIR not set. Usage: DEST_DIR=/path/to/site ./build.sh dist" >&2
+    echo "       or: ./build.sh dist /path/to/site" >&2
     exit 1
   fi
+
+  # Accept 'DEST_DIR=/path' as a positional argument too.
+  case "$dest" in
+    DEST_DIR=*) dest="${dest#DEST_DIR=}" ;;
+  esac
+  if [ -z "$dest" ]; then
+    echo "Error: no destination path given." >&2
+    exit 1
+  fi
+
+  # Expand a leading tilde to the user's home directory.
+  case "$dest" in
+    "~"/*) dest="${HOME}/${dest#\~/}" ;;
+    "~") dest="$HOME" ;;
+  esac
 
   build_all
   api_docs
@@ -162,6 +178,7 @@ usage() {
   echo "  api-docs      Generate docs/api.html from the OpenAPI specification"
   echo "  index         Generate index.html from README.md with Hugo"
   echo "  dist          Stage dist/, docs/ and index.html into DEST_DIR"
+  echo "                (DEST_DIR=/path or ./build.sh dist /path/to/site)"
   echo "  run-desktop   Build and run in desktop mode"
   echo "  run-server    Build and run in server mode"
   echo "  test          Run the Go test suite"
