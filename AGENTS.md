@@ -8,13 +8,13 @@ Do a "git pull" at the start of operations to make sure the local repository is 
 
 Never edit the README.md file.
 
-The application should be self-hostable by a home user. If run on a home desktop machine (Windows, MacOS, Linux, Raspberry Pi) the executable should start up the back-end server to listen on an available non-privileged port, and should then start up an available web browser to point at the user interface served by that back-end. In this operation mode, the application should only be available to the local web browser, it shouldn't accept traffic from the wider network, and user authentication should be by simply reading the username from the local environment.
+The application should be self-hostable by a home user. If run on a home desktop machine (Windows, MacOS, Linux, Raspberry Pi) the executable should start up the back-end server to listen on an available non-privileged port (8080 by default, changeable by command-line option), and should then start up an available web browser to point at the user interface served by that back-end. In this operation mode, the application should only be available to the local web browser, it shouldn't accept traffic from the wider network, and user authentication should be by simply reading the username from the local environment.
 
 The application should use Go's "embed" package to host all needed file resources.
 
 The application should be able to operate on a machine without internet access. The user interface should be web-based, constructed using Bootstrap, with the Bootstrap library files served by the application itself. Don't use any other JavaScript libraries.
 
-The application should only need Go as a build tool. It can use a shell (bash) script to build. It can use Swaggo to build the API documentation. It shouldn't need to use Python.
+The application should only need Go as a build tool. It can use a shell (bash) script to build. It should use Swaggo to build the API documentation. It shouldn't need to use Python.
 
 The Go application should consist of one "main.go" file and one "api.go" file. All API calls go in the API.go file, everything else goes in main.go.
 
