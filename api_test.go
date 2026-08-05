@@ -274,77 +274,30 @@ func TestServeUnderBasePath(t *testing.T) {
 	}
 }
 
-func TestServeIndexIncludesBasePath(t *testing.T) {
+func TestServeIndexPlainRelativeLinks(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
+	handler := buildHandler(a, "/magooify")
 
-	// Configured base path, request sent both through the proxy prefix and
-	// directly to the app (proxy already stripped the prefix).
-	for _, reqPath := range []string{"/", "/magooify/"} {
-		handler := buildHandler(a, "/magooify")
-		req := httptest.NewRequest("GET", reqPath, nil)
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		if rr.Code != http.StatusOK {
-			t.Fatalf("base=/magooify path=%s: status = %d, want 200", reqPath, rr.Code)
-		}
-		if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="/magooify/"/>`)) {
-			t.Errorf("base=/magooify path=%s: body does not contain <base href=\"/magooify/\"/>", reqPath)
-		}
-	}
-
-	// No configured base path but the proxy (Traefik/Pangolin) supplied the
-	// stripped prefix via the X-Forwarded-Prefix header.
-	handler := buildHandler(a, "")
 	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("X-Forwarded-Prefix", "/magooify")
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
-	if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="/magooify/"/>`)) {
-		t.Errorf("X-Forwarded-Prefix=/magooify: body does not contain <base href=\"/magooify/\"/>")
-	}
 
-	// The header wins even when a base path is configured, so the same app
-	// instance can serve several sub-paths simultaneously. The two URLs from
-	// the deployment (e.g. /magooify and /app/d.b.hicks/8080) each get their
-	// own prefix for the same request.
-	for _, prefix := range []string{"/magooify", "/app/d.b.hicks/8080"} {
-		req := httptest.NewRequest("GET", "/", nil)
-		req.Header.Set("X-Forwarded-Prefix", prefix)
-		rr := httptest.NewRecorder()
-		buildHandler(a, "/magooify").ServeHTTP(rr, req)
-		if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="`+prefix+`/"/>`)) {
-			t.Errorf("X-Forwarded-Prefix=%s with configured base: body does not contain <base href=\"%s/\"/>", prefix, prefix)
-		}
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
 	}
-
-	// No base path and no proxy prefix: served from the site root.
-	req = httptest.NewRequest("GET", "/", nil)
-	rr = httptest.NewRecorder()
-	handler.ServeHTTP(rr, req)
-	if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="/"/>`)) {
-		t.Errorf("no base path: body does not contain <base href=\"/\"/>")
+	if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+		t.Errorf("content-type = %q, want text/html", ct)
 	}
-}
-
-func TestSafeForwardedPrefix(t *testing.T) {
-	cases := map[string]string{
-		"":             "",
-		"/magooify":    "/magooify",
-		"/magooify/":   "/magooify",
-		"magooify":     "",
-		"//evil.com":   "",
-		"/magooify/..": "",
-		"/magooify?x":  "",
-		"/magooify#x":  "",
-		"/magooify\\x": "",
-		" /sub ":       "/sub",
+	body := rr.Body.String()
+	if strings.Contains(body, "<base") {
+		t.Errorf("index.html must not contain an injected <base> tag")
 	}
-	for in, want := range cases {
-		if got := safeForwardedPrefix(in); got != want {
-			t.Errorf("safeForwardedPrefix(%q) = %q, want %q", in, got, want)
-		}
+	if !strings.Contains(body, `href="vendor/bootstrap/bootstrap.min.css"`) {
+		t.Errorf("index.html must keep plain relative asset links")
+	}
+	if !strings.Contains(body, `src="app.js"`) {
+		t.Errorf("index.html must keep plain relative script links")
 	}
 }
 

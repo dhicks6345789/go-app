@@ -220,64 +220,30 @@ func buildHandler(a *api, basePath string) http.Handler {
 			}
 		}
 
-		// SPA fallback to index.html with the base path injected so relative
-		// asset and API URLs resolve under the reverse-proxy sub-path.
-		serveIndex(w, r, subFS, baseHrefFor(r, basePath))
+		// SPA fallback to index.html. The page uses plain relative links, so
+		// resources resolve against the document URL automatically, whether the
+		// app is served from the site root or a reverse-proxy sub-path.
+		serveIndex(w, r, subFS)
 	})
 
 	return basePathHandler(basePath, mux)
 }
 
-// baseHrefFor returns the <base href> value for the request. No root URL is
-// hard-coded: the proxy-supplied X-Forwarded-Prefix header (set by
-// Traefik/Pangolin when stripping a sub-path) reflects the external URL this
-// specific request came through, so it takes precedence. That lets one app
-// instance be served simultaneously from several sub-paths. The configured
-// base path is only a fallback for proxies that don't forward the header.
-func baseHrefFor(r *http.Request, configured string) string {
-	if base := safeForwardedPrefix(r.Header.Get("X-Forwarded-Prefix")); base != "" {
-		return base + "/"
-	}
-	base := normalizeBasePath(configured)
-	if base == "" {
-		return "/"
-	}
-	return base + "/"
-}
-
-// safeForwardedPrefix validates a proxy-supplied X-Forwarded-Prefix header
-// before it is trusted for building URLs. The header is attacker controllable
-// on misconfigured proxy chains, so only a safe path-absolute value such as
-// "/magooify" is accepted; anything that could redirect asset URLs elsewhere
-// (protocol-relative, dot segments, query/fragment characters) is rejected.
-func safeForwardedPrefix(val string) string {
-	val = strings.TrimSpace(val)
-	if val == "" || !strings.HasPrefix(val, "/") || strings.HasPrefix(val, "//") {
-		return ""
-	}
-	if strings.ContainsAny(val, "\\?#\r\n") || strings.Contains(val, "..") {
-		return ""
-	}
-	return normalizeBasePath(val)
-}
-
-// serveIndex writes the embedded index.html with a <base> tag pointing at the
-// effective base path. This keeps relative URLs (vendor/, style.css, app.js,
-// api/...) resolving under the proxy sub-path regardless of whether the proxy
-// forwards the request path unchanged or strips it before reaching the app.
-func serveIndex(w http.ResponseWriter, r *http.Request, subFS fs.FS, baseHref string) {
+// serveIndex writes the embedded index.html. The page uses only plain
+// relative links, so no <base> tag is needed: resources resolve against the
+// document URL, which keeps them working under any reverse-proxy sub-path as
+// long as the request URL carries a trailing slash.
+func serveIndex(w http.ResponseWriter, r *http.Request, subFS fs.FS) {
 	data, err := fs.ReadFile(subFS, "index.html")
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 
-	html := strings.Replace(string(data), "<head>", "<head>\n    <base href=\""+baseHref+"\"/>", 1)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// Never cache the page: the injected <base href> depends on the deployment
-	// base path, and a stale cached copy misdirects asset and API URLs.
+	// Never cache the page so a stale copy can't linger after redeploys.
 	w.Header().Set("Cache-Control", "no-store")
-	w.Write([]byte(html))
+	w.Write(data)
 }
 
 func getEnv(key, defaultValue string) string {
