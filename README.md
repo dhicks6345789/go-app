@@ -11,8 +11,8 @@ This application itself doesn't do anything much, it just presents a basic user 
 - **Works on Desktop and Server**:
   - **Desktop Mode**: Ideal for local home desktop use on pretty much any platform ([Windows](https://www.microsoft.com/windows/) / [Windows Server](https://www.microsoft.com/windows-server), [MacOS](https://en.wikipedia.org/wiki/MacOS), and [Linux](https://en.wikipedia.org/wiki/Linux), including both the [Raspberry Pi](https://www.raspberrypi.com/) (and other single-board computers) and [ChromeOS](https://chromeos.google/intl/en_uk/products/chromeos-flex/) ([Crostini](https://chromeos.dev/en/linux))). Running the executable on your desktop machine should give you a localhost-only server and automatically launch your default web browser to display the user interface.
   - **Server Mode**: Suitable for multi-user deployment behind authenticating reverse proxies ([Pangolin](https://pangolin.net/), [Cloudflare Tunnel](https://developers.cloudflare.com/tunnel/), [Authelia](https://www.authelia.com/), [Tailscale](https://tailscale.com/), [etc](https://github.com/anderspitman/awesome-tunneling)). Authenticates users via incoming proxy headers (`X-Forwarded-User`, `Remote-User`, `Pangolin-User`, etc.). As a single, statically linked Go binary with no external dependencies, it can be run inside a very minimal (`scratch`) container environment.
-- **Built for using by humans and AI agents**: With built-in documentation and Swagger UI, documentation should be easy to understand for both humans and AI agents.
-- **Built for extending by humans and AI agents**: Point an AI coding agent at AGENTS.md (or read it yourself) and use this project as a basis for your own app.
+- **Built for use by humans and AI agents**: With built-in documentation and Swagger UI, documentation should be easy to understand for both humans and AI agents.
+- **Built for extending by humans and AI agents**: Point an AI coding agent at AGENTS.md (or read it yourself) and use this project as a basis for your own app, the project structure is kept deliberately simple.
 
 ---
 
