@@ -220,6 +220,14 @@ func buildHandler(a *api, basePath string) http.Handler {
 			}
 		}
 
+		// About to serve index.html. The page uses plain relative links, so it
+		// must be served from a URL ending in "/"; otherwise the browser
+		// resolves them one directory up. Redirect to add the trailing slash.
+		if loc, ok := indexRedirectLocation(r); ok {
+			http.Redirect(w, r, loc, http.StatusMovedPermanently)
+			return
+		}
+
 		// SPA fallback to index.html. The page uses plain relative links, so
 		// resources resolve against the document URL automatically, whether the
 		// app is served from the site root or a reverse-proxy sub-path.
@@ -227,6 +235,51 @@ func buildHandler(a *api, basePath string) http.Handler {
 	})
 
 	return basePathHandler(basePath, mux)
+}
+
+// indexRedirectLocation returns the Location header for a 301 that adds a
+// trailing slash to a request that is about to serve index.html. ok is false
+// when the URL already ends in "/" and no redirect is needed.
+func indexRedirectLocation(r *http.Request) (string, bool) {
+	p := r.URL.Path
+
+	// A stripping proxy (Traefik/Pangolin) forwards a bare prefix such as
+	// "/magooify" with an empty path; re-attach the prefix it reported so the
+	// redirect still points at the external URL the browser sees.
+	if p == "" {
+		prefix := safeForwardedPrefix(r.Header.Get("X-Forwarded-Prefix"))
+		if prefix == "" {
+			return "/", true
+		}
+		return prefix + "/", true
+	}
+
+	if p != "/" && !strings.HasSuffix(p, "/") {
+		loc := p + "/"
+		if r.URL.RawQuery != "" {
+			loc += "?" + r.URL.RawQuery
+		}
+		return loc, true
+	}
+
+	return "", false
+}
+
+// safeForwardedPrefix validates a proxy-supplied X-Forwarded-Prefix header
+// before it is trusted for building a redirect URL. The header is attacker
+// controllable on misconfigured proxy chains, so only a safe path-absolute
+// value such as "/magooify" is accepted; anything that could turn the redirect
+// into an open redirect (protocol-relative, dot segments, query/fragment
+// characters) is rejected.
+func safeForwardedPrefix(val string) string {
+	val = strings.TrimSpace(val)
+	if val == "" || !strings.HasPrefix(val, "/") || strings.HasPrefix(val, "//") {
+		return ""
+	}
+	if strings.ContainsAny(val, "\\?#\r\n") || strings.Contains(val, "..") {
+		return ""
+	}
+	return normalizeBasePath(val)
 }
 
 // serveIndex writes the embedded index.html. The page uses only plain

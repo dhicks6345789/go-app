@@ -301,6 +301,100 @@ func TestServeIndexPlainRelativeLinks(t *testing.T) {
 	}
 }
 
+func TestIndexRedirectAddsTrailingSlash(t *testing.T) {
+	registerMimeTypes()
+	a := newAPI(true, docsFS)
+
+	// No configured base path: a proxy that passes the sub-path through (or
+	// direct access) reaches the SPA fallback with a no-slash URL and must be
+	// redirected so relative links resolve correctly.
+	handler := buildHandler(a, "")
+
+	cases := []struct {
+		path       string
+		wantCode   int
+		wantLoc    string
+		wantHTML   bool
+		wantCT     string
+	}{
+		{"/magooify", http.StatusMovedPermanently, "/magooify/", false, ""},
+		{"/magooify?x=1", http.StatusMovedPermanently, "/magooify/?x=1", false, ""},
+		{"/", http.StatusOK, "", true, "text/html"},
+		{"/index.html", http.StatusMovedPermanently, "/index.html/", false, ""},
+		{"/style.css", http.StatusOK, "", false, "text/css"},
+		{"/vendor/bootstrap/bootstrap.min.css", http.StatusOK, "", false, "text/css"},
+		{"/foo", http.StatusMovedPermanently, "/foo/", false, ""},
+	}
+	for _, tc := range cases {
+		req := httptest.NewRequest("GET", tc.path, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != tc.wantCode {
+			t.Errorf("%s: status = %d, want %d", tc.path, rr.Code, tc.wantCode)
+		}
+		if tc.wantLoc != "" && rr.Header().Get("Location") != tc.wantLoc {
+			t.Errorf("%s: Location = %q, want %q", tc.path, rr.Header().Get("Location"), tc.wantLoc)
+		}
+		if tc.wantHTML && !strings.Contains(rr.Body.String(), "Go Self-Contained App") {
+			t.Errorf("%s: expected index.html body", tc.path)
+		}
+		if tc.wantCT != "" {
+			if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, tc.wantCT) {
+				t.Errorf("%s: content-type = %q, want %q", tc.path, ct, tc.wantCT)
+			}
+		}
+	}
+}
+
+func TestIndexRedirectWithStrippedPrefix(t *testing.T) {
+	// Traefik/Pangolin stripPrefix on a bare "/magooify" forwards an empty
+	// path with X-Forwarded-Prefix; the redirect must point at the external
+	// URL with a trailing slash.
+	req := httptest.NewRequest("GET", "/", nil)
+	req.URL.Path = ""
+	req.Header.Set("X-Forwarded-Prefix", "/magooify")
+	if loc, ok := indexRedirectLocation(req); !ok || loc != "/magooify/" {
+		t.Errorf("empty path: loc = %q, ok = %v, want %q, true", loc, ok, "/magooify/")
+	}
+
+	// An unsafe X-Forwarded-Prefix must not turn the redirect into an open
+	// redirect; it falls back to the site root.
+	req = httptest.NewRequest("GET", "/", nil)
+	req.URL.Path = ""
+	req.Header.Set("X-Forwarded-Prefix", "//evil.com")
+	if loc, ok := indexRedirectLocation(req); !ok || loc != "/" {
+		t.Errorf("unsafe prefix: loc = %q, ok = %v, want %q, true", loc, ok, "/")
+	}
+
+	// The root path already ends in "/" and needs no redirect, even through a
+	// strip proxy.
+	req = httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Forwarded-Prefix", "/magooify")
+	if _, ok := indexRedirectLocation(req); ok {
+		t.Errorf("root path: expected no redirect")
+	}
+}
+
+func TestSafeForwardedPrefix(t *testing.T) {
+	cases := map[string]string{
+		"":             "",
+		"/magooify":    "/magooify",
+		"/magooify/":   "/magooify",
+		"magooify":     "",
+		"//evil.com":   "",
+		"/magooify/..": "",
+		"/magooify?x":  "",
+		"/magooify#x":  "",
+		"/magooify\\x": "",
+		" /sub ":       "/sub",
+	}
+	for in, want := range cases {
+		if got := safeForwardedPrefix(in); got != want {
+			t.Errorf("safeForwardedPrefix(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestServeWithoutBasePathStillWorks(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
