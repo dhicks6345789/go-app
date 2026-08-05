@@ -305,6 +305,20 @@ func TestServeIndexIncludesBasePath(t *testing.T) {
 		t.Errorf("X-Forwarded-Prefix=/magooify: body does not contain <base href=\"/magooify/\"/>")
 	}
 
+	// The header wins even when a base path is configured, so the same app
+	// instance can serve several sub-paths simultaneously. The two URLs from
+	// the deployment (e.g. /magooify and /app/d.b.hicks/8080) each get their
+	// own prefix for the same request.
+	for _, prefix := range []string{"/magooify", "/app/d.b.hicks/8080"} {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("X-Forwarded-Prefix", prefix)
+		rr := httptest.NewRecorder()
+		buildHandler(a, "/magooify").ServeHTTP(rr, req)
+		if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="`+prefix+`/"/>`)) {
+			t.Errorf("X-Forwarded-Prefix=%s with configured base: body does not contain <base href=\"%s/\"/>", prefix, prefix)
+		}
+	}
+
 	// No base path and no proxy prefix: served from the site root.
 	req = httptest.NewRequest("GET", "/", nil)
 	rr = httptest.NewRecorder()

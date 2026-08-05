@@ -228,15 +228,17 @@ func buildHandler(a *api, basePath string) http.Handler {
 	return basePathHandler(basePath, mux)
 }
 
-// baseHrefFor returns the <base href> value for the request. The explicitly
-// configured base path wins; otherwise a proxy-supplied X-Forwarded-Prefix
-// header (set by Traefik/Pangolin when stripping a sub-path) is used. With
-// neither, the app is served from the site root.
+// baseHrefFor returns the <base href> value for the request. No root URL is
+// hard-coded: the proxy-supplied X-Forwarded-Prefix header (set by
+// Traefik/Pangolin when stripping a sub-path) reflects the external URL this
+// specific request came through, so it takes precedence. That lets one app
+// instance be served simultaneously from several sub-paths. The configured
+// base path is only a fallback for proxies that don't forward the header.
 func baseHrefFor(r *http.Request, configured string) string {
-	base := normalizeBasePath(configured)
-	if base == "" {
-		base = safeForwardedPrefix(r.Header.Get("X-Forwarded-Prefix"))
+	if base := safeForwardedPrefix(r.Header.Get("X-Forwarded-Prefix")); base != "" {
+		return base + "/"
 	}
+	base := normalizeBasePath(configured)
 	if base == "" {
 		return "/"
 	}
