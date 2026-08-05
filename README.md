@@ -24,7 +24,7 @@ Simply download and run the executable for your platform from the [project homep
 
 ### Server
 
-You can run Go App behind an authenticating proxy server - the proxy server handles HTTPS, authenticates the user and passes the username to the application via a simple HTTP header. As the executable is compiled with CGO disabled (CGO_ENABLED=0) and the proxy server is dealing with HTTPS, the container environment can use the `scratch` container image. For instance, if you were using Pangolin as your authenticating server, you would add a basic Dockerfile:
+You can run Go App behind an authenticating proxy server - the proxy server handles HTTPS, authenticates the user and passes the username to the application via an HTTP header. As the executable is compiled with CGO disabled (CGO_ENABLED=0) and the proxy server is dealing with HTTPS, the container environment can use the `scratch` (completely empty) container image. For instance, if you were using Pangolin as your authenticating server, you would add a basic Dockerfile:
 
 ```
 # Note: the "scratch" image is 0 bytes, it doesn't have tools like chmod, so there's some extra steps
