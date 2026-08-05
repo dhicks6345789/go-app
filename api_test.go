@@ -274,6 +274,35 @@ func TestServeUnderBasePath(t *testing.T) {
 	}
 }
 
+func TestServeIndexIncludesBasePath(t *testing.T) {
+	registerMimeTypes()
+	a := newAPI(true, docsFS)
+
+	for _, tc := range []struct {
+		basePath string
+		wantHref string
+	}{
+		{"/magooify", `<base href="/magooify/"/>`},
+		{"/magooify/", `<base href="/magooify/"/>`},
+		{"", `<base href="/"/>`},
+	} {
+		handler := buildHandler(a, tc.basePath)
+		req := httptest.NewRequest("GET", "/", nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("base=%q: status = %d, want %d", tc.basePath, rr.Code, http.StatusOK)
+		}
+		if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
+			t.Errorf("base=%q: content-type = %q, want text/html", tc.basePath, ct)
+		}
+		if !bytes.Contains(rr.Body.Bytes(), []byte(tc.wantHref)) {
+			t.Errorf("base=%q: body does not contain %q", tc.basePath, tc.wantHref)
+		}
+	}
+}
+
 func TestServeWithoutBasePathStillWorks(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)

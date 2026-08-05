@@ -204,6 +204,13 @@ func buildHandler(a *api, basePath string) http.Handler {
 	}
 	fileServer := http.FileServer(http.FS(subFS))
 
+	baseHref := normalizeBasePath(basePath)
+	if baseHref == "" {
+		baseHref = "/"
+	} else {
+		baseHref += "/"
+	}
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api") || strings.HasPrefix(r.URL.Path, "/docs") {
 			http.NotFound(w, r)
@@ -211,24 +218,37 @@ func buildHandler(a *api, basePath string) http.Handler {
 		}
 
 		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" {
-			fileServer.ServeHTTP(w, r)
-			return
+		if path != "" && path != "index.html" {
+			f, err := subFS.Open(path)
+			if err == nil {
+				f.Close()
+				fileServer.ServeHTTP(w, r)
+				return
+			}
 		}
 
-		f, err := subFS.Open(path)
-		if err == nil {
-			f.Close()
-			fileServer.ServeHTTP(w, r)
-			return
-		}
-
-		// SPA fallback to index.html
-		r.URL.Path = "/"
-		fileServer.ServeHTTP(w, r)
+		// SPA fallback to index.html with the base path injected so relative
+		// asset and API URLs resolve under the reverse-proxy sub-path.
+		serveIndex(w, r, subFS, baseHref)
 	})
 
 	return basePathHandler(basePath, mux)
+}
+
+// serveIndex writes the embedded index.html with a <base> tag pointing at the
+// configured base path. This keeps relative URLs (vendor/, style.css, app.js,
+// api/...) resolving under the proxy sub-path regardless of whether the proxy
+// forwards the request path unchanged or strips it before reaching the app.
+func serveIndex(w http.ResponseWriter, r *http.Request, subFS fs.FS, baseHref string) {
+	data, err := fs.ReadFile(subFS, "index.html")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	html := strings.Replace(string(data), "<head>", "<head>\n    <base href=\""+baseHref+"\"/>", 1)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write([]byte(html))
 }
 
 func getEnv(key, defaultValue string) string {
