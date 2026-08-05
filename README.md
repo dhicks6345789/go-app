@@ -65,7 +65,7 @@ bash build.sh build-all
 
 This will compile the executables for all platforms.
 
-You can build executables and generate documentation, including Swaggo's interactive API documentation, and copy the lot directly to somewhere they can be served as a web site to act as a project homepage using "build.sh dist", you just need to specify the path you want the files to go to, e.g.:
+You can build executables and generate documentation, including Swaggo's interactive API documentation, and copy the lot directly to somewhere they can be served as a web site to act as a project homepage using "build.sh dist". You just need to specify the path you want the files to go to, e.g.:
 
 ```
 bash build.sh dist ~/www/go-app
