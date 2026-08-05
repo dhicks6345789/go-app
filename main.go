@@ -170,13 +170,6 @@ func withBasePath(r *http.Request, base string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), basePathContextKey{}, base))
 }
 
-func basePathOf(r *http.Request) string {
-	if b, ok := r.Context().Value(basePathContextKey{}).(string); ok {
-		return b
-	}
-	return ""
-}
-
 // basePathHandler wraps the application handler so it can be served from one
 // or more reverse-proxy sub-paths (e.g. /magooify or /app/d.b.hicks/8080).
 // Requests arriving with one of those path prefixes have the prefix stripped
@@ -269,12 +262,16 @@ func buildHandler(a *api, basePaths []string) http.Handler {
 			}
 		}
 
-		// About to serve index.html. The page uses plain relative links, so it
-		// must be served from a URL ending in "/"; otherwise the browser
-		// resolves them one directory up. Redirect to add the trailing slash.
-		if loc, ok := indexRedirectLocation(r); ok {
-			http.Redirect(w, r, loc, http.StatusMovedPermanently)
-			return
+		// A stripping proxy forwards a bare prefix such as "/magooify" as an
+		// empty path. Redirect to the trailing-slash form so the browser loads
+		// the index document from a URL ending in "/". Only this case is
+		// redirected: ordinary resource requests like /magooify/app.js are
+		// served as-is, never bounced to a trailing slash.
+		if r.URL.Path == "" {
+			if loc, ok := indexRedirectLocation(r); ok {
+				http.Redirect(w, r, loc, http.StatusMovedPermanently)
+				return
+			}
 		}
 
 		// SPA fallback to index.html. The page uses plain relative links, so
@@ -287,33 +284,21 @@ func buildHandler(a *api, basePaths []string) http.Handler {
 }
 
 // indexRedirectLocation returns the Location header for a 301 that adds a
-// trailing slash to a request that is about to serve index.html. ok is false
-// when the URL already ends in "/" and no redirect is needed. If the request
-// had a reverse-proxy base path stripped, the prefix is re-attached so the
-// redirect points at the external URL the browser sees.
+// trailing slash when a stripping proxy (Traefik/Pangolin) forwards a bare
+// prefix such as "/magooify" as an empty path. ok is false when the request
+// does not need a redirect. The prefix the proxy reports via
+// X-Forwarded-Prefix is re-attached so the redirect points at the external
+// URL the browser sees; otherwise it falls back to the site root.
 func indexRedirectLocation(r *http.Request) (string, bool) {
-	p := r.URL.Path
-
-	// A stripping proxy (Traefik/Pangolin) forwards a bare prefix such as
-	// "/magooify" with an empty path; re-attach the prefix it reported so the
-	// redirect still points at the external URL the browser sees.
-	if p == "" {
-		prefix := safeForwardedPrefix(r.Header.Get("X-Forwarded-Prefix"))
-		if prefix == "" {
-			return "/", true
-		}
-		return prefix + "/", true
+	if r.URL.Path != "" {
+		return "", false
 	}
 
-	if p != "/" && !strings.HasSuffix(p, "/") {
-		loc := basePathOf(r) + p + "/"
-		if r.URL.RawQuery != "" {
-			loc += "?" + r.URL.RawQuery
-		}
-		return loc, true
+	prefix := safeForwardedPrefix(r.Header.Get("X-Forwarded-Prefix"))
+	if prefix == "" {
+		return "/", true
 	}
-
-	return "", false
+	return prefix + "/", true
 }
 
 // safeForwardedPrefix validates a proxy-supplied X-Forwarded-Prefix header

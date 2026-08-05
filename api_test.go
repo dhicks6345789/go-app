@@ -306,24 +306,27 @@ func TestIndexRedirectAddsTrailingSlash(t *testing.T) {
 	a := newAPI(true, docsFS)
 
 	// No configured base path: a proxy that passes the sub-path through (or
-	// direct access) reaches the SPA fallback with a no-slash URL and must be
-	// redirected so relative links resolve correctly.
+	// direct access) reaches the SPA fallback. Only a stripping proxy's empty
+	// path is redirected (see TestIndexRedirectWithStrippedPrefix); files and
+	// SPA-fallback paths are served without a trailing-slash redirect.
 	handler := buildHandler(a, nil)
 
 	cases := []struct {
 		path     string
 		wantCode int
-		wantLoc  string
 		wantHTML bool
 		wantCT   string
 	}{
-		{"/magooify", http.StatusMovedPermanently, "/magooify/", false, ""},
-		{"/magooify?x=1", http.StatusMovedPermanently, "/magooify/?x=1", false, ""},
-		{"/", http.StatusOK, "", true, "text/html"},
-		{"/index.html", http.StatusMovedPermanently, "/index.html/", false, ""},
-		{"/style.css", http.StatusOK, "", false, "text/css"},
-		{"/vendor/bootstrap/bootstrap.min.css", http.StatusOK, "", false, "text/css"},
-		{"/foo", http.StatusMovedPermanently, "/foo/", false, ""},
+		// Real files are served, never redirected.
+		{"/app.js", http.StatusOK, false, "text/javascript"},
+		{"/style.css", http.StatusOK, false, "text/css"},
+		{"/vendor/bootstrap/bootstrap.min.css", http.StatusOK, false, "text/css"},
+		// The index document and SPA-fallback paths are served as-is.
+		{"/", http.StatusOK, true, "text/html"},
+		{"/index.html", http.StatusOK, true, "text/html"},
+		{"/magooify", http.StatusOK, true, "text/html"},
+		{"/magooify?x=1", http.StatusOK, true, "text/html"},
+		{"/foo", http.StatusOK, true, "text/html"},
 	}
 	for _, tc := range cases {
 		req := httptest.NewRequest("GET", tc.path, nil)
@@ -332,8 +335,8 @@ func TestIndexRedirectAddsTrailingSlash(t *testing.T) {
 		if rr.Code != tc.wantCode {
 			t.Errorf("%s: status = %d, want %d", tc.path, rr.Code, tc.wantCode)
 		}
-		if tc.wantLoc != "" && rr.Header().Get("Location") != tc.wantLoc {
-			t.Errorf("%s: Location = %q, want %q", tc.path, rr.Header().Get("Location"), tc.wantLoc)
+		if loc := rr.Header().Get("Location"); loc != "" {
+			t.Errorf("%s: unexpected Location %q", tc.path, loc)
 		}
 		if tc.wantHTML && !strings.Contains(rr.Body.String(), "Go Self-Contained App") {
 			t.Errorf("%s: expected index.html body", tc.path)
@@ -450,16 +453,20 @@ func TestServeNoStripMultipleBasePaths(t *testing.T) {
 		}
 	}
 
-	// A no-slash SPA-fallback path under a prefix must redirect with the
-	// prefix re-attached so the browser stays under the sub-path.
+	// A no-slash SPA-fallback path under a prefix is served the index document
+	// without a redirect; the page's relative links still resolve against the
+	// prefix.
 	req := httptest.NewRequest("GET", "/magooify/foo", nil)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
-	if rr.Code != http.StatusMovedPermanently {
-		t.Errorf("/magooify/foo: status = %d, want 301", rr.Code)
+	if rr.Code != http.StatusOK {
+		t.Errorf("/magooify/foo: status = %d, want 200", rr.Code)
 	}
-	if loc := rr.Header().Get("Location"); loc != "/magooify/foo/" {
-		t.Errorf("/magooify/foo: Location = %q, want %q", loc, "/magooify/foo/")
+	if loc := rr.Header().Get("Location"); loc != "" {
+		t.Errorf("/magooify/foo: unexpected Location %q", loc)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Errorf("/magooify/foo: content-type = %q, want text/html", ct)
 	}
 }
 
