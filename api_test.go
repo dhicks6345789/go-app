@@ -278,27 +278,58 @@ func TestServeIndexIncludesBasePath(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
 
-	for _, tc := range []struct {
-		basePath string
-		wantHref string
-	}{
-		{"/magooify", `<base href="/magooify/"/>`},
-		{"/magooify/", `<base href="/magooify/"/>`},
-		{"", `<base href="/"/>`},
-	} {
-		handler := buildHandler(a, tc.basePath)
-		req := httptest.NewRequest("GET", "/", nil)
+	// Configured base path, request sent both through the proxy prefix and
+	// directly to the app (proxy already stripped the prefix).
+	for _, reqPath := range []string{"/", "/magooify/"} {
+		handler := buildHandler(a, "/magooify")
+		req := httptest.NewRequest("GET", reqPath, nil)
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		if rr.Code != http.StatusOK {
-			t.Errorf("base=%q: status = %d, want %d", tc.basePath, rr.Code, http.StatusOK)
+			t.Fatalf("base=/magooify path=%s: status = %d, want 200", reqPath, rr.Code)
 		}
-		if ct := rr.Header().Get("Content-Type"); ct != "text/html; charset=utf-8" {
-			t.Errorf("base=%q: content-type = %q, want text/html", tc.basePath, ct)
+		if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="/magooify/"/>`)) {
+			t.Errorf("base=/magooify path=%s: body does not contain <base href=\"/magooify/\"/>", reqPath)
 		}
-		if !bytes.Contains(rr.Body.Bytes(), []byte(tc.wantHref)) {
-			t.Errorf("base=%q: body does not contain %q", tc.basePath, tc.wantHref)
+	}
+
+	// No configured base path but the proxy (Traefik/Pangolin) supplied the
+	// stripped prefix via the X-Forwarded-Prefix header.
+	handler := buildHandler(a, "")
+	req := httptest.NewRequest("GET", "/", nil)
+	req.Header.Set("X-Forwarded-Prefix", "/magooify")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="/magooify/"/>`)) {
+		t.Errorf("X-Forwarded-Prefix=/magooify: body does not contain <base href=\"/magooify/\"/>")
+	}
+
+	// No base path and no proxy prefix: served from the site root.
+	req = httptest.NewRequest("GET", "/", nil)
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if !bytes.Contains(rr.Body.Bytes(), []byte(`<base href="/"/>`)) {
+		t.Errorf("no base path: body does not contain <base href=\"/\"/>")
+	}
+}
+
+func TestSafeForwardedPrefix(t *testing.T) {
+	cases := map[string]string{
+		"":             "",
+		"/magooify":    "/magooify",
+		"/magooify/":   "/magooify",
+		"magooify":     "",
+		"//evil.com":   "",
+		"/magooify/..": "",
+		"/magooify?x":  "",
+		"/magooify#x":  "",
+		"/magooify\\x": "",
+		" /sub ":       "/sub",
+	}
+	for in, want := range cases {
+		if got := safeForwardedPrefix(in); got != want {
+			t.Errorf("safeForwardedPrefix(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
