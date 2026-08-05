@@ -35,19 +35,17 @@ RUN apk add --no-cache curl && \
 
 # ...then use that to build the actual image we want.
 FROM scratch
-COPY --from=downloader /go-app /gp-app
-
+COPY --from=downloader /go-app /go-app
 ```
 And to docker compose, add something like:
 ```
 goapp:
     image: GO_APP_IMAGE
-    command: /go-app -mode=server -port=8080
+    command: /go-app -mode=server -port=8080 -base-path=/go-app
     container_name: goapp
     restart: unless-stopped
 ```
-
-From the Pangolin control panel you would then create a resource, using whatever authentication and access controls you like, that pointed at that container (`goapp:8080`).
+From the Pangolin control panel you would then create a resource, possibly with a prefix ("go-app" or whatever you have named your derived app) using whatever authentication and access controls you like, that pointed at that container (`goapp:8080`). If you do use a prefix for the resource (e.g. with your app available at https://www.example.com/mynewapp), be sure to add that prefix as the "-base-path" option when running the server.
 
 ## Building
 
