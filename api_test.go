@@ -235,7 +235,6 @@ func TestServeUnderBasePath(t *testing.T) {
 		wantBody    string
 	}{
 		{"/magooify/", http.StatusOK, "text/html", "Go Self-Contained App"},
-		{"/magooify", http.StatusOK, "text/html", "Go Self-Contained App"},
 		{"/magooify/style.css", http.StatusOK, "text/css", ".brand-icon"},
 		{"/magooify/vendor/bootstrap/bootstrap.min.css", http.StatusOK, "text/css", "bootstrap"},
 		{"/magooify/app.js", http.StatusOK, "text/javascript", "DOMContentLoaded"},
@@ -244,6 +243,18 @@ func TestServeUnderBasePath(t *testing.T) {
 		{"/magooify/docs/api", http.StatusOK, "text/html", "swagger-ui"},
 		{"/magooify/docs/swagger.json", http.StatusOK, "application/json", `"swagger"`},
 		{"/magooify/docs/swagger-ui/swagger-ui.css", http.StatusOK, "text/css", "swagger-ui"},
+	}
+
+	// A request without the trailing slash must redirect to it so relative
+	// URLs in index.html resolve under the base path, not the site root.
+	req := httptest.NewRequest("GET", "/magooify", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusMovedPermanently {
+		t.Errorf("/magooify: status = %d, want %d (redirect)", rr.Code, http.StatusMovedPermanently)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/magooify/" {
+		t.Errorf("/magooify: Location = %q, want %q", loc, "/magooify/")
 	}
 
 	for _, tc := range cases {

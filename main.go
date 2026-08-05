@@ -157,7 +157,17 @@ func basePathHandler(basePath string, next http.Handler) http.Handler {
 		var stripped string
 
 		switch {
-		case p == basePath || p == basePath+"/":
+		case p == basePath:
+			// Redirect to the trailing-slash form so the browser resolves
+			// relative URLs (vendor/, style.css, app.js, api/...) against the
+			// base path instead of the site root.
+			location := basePath + "/"
+			if r.URL.RawQuery != "" {
+				location += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, location, http.StatusMovedPermanently)
+			return
+		case p == basePath+"/":
 			stripped = "/"
 		case strings.HasPrefix(p, basePath+"/"):
 			stripped = strings.TrimPrefix(p, basePath)
