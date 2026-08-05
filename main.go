@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"flag"
 	"fmt"
@@ -60,7 +61,7 @@ func main() {
 	port := flag.String("port", defaultPort, "Port to listen on")
 	mode := flag.String("mode", defaultMode, "Operation mode: 'desktop' or 'server'")
 	host := flag.String("host", defaultHost, "Host IP to bind to (defaults to 127.0.0.1 for desktop, 0.0.0.0 for server)")
-	basePath := flag.String("base-path", getEnv("BASE_PATH", ""), "URL prefix to serve under when mounted behind a reverse proxy at a sub-path (e.g. /magooify)")
+	basePath := flag.String("base-path", getEnv("BASE_PATH", ""), "Comma-separated URL prefixes to serve under when mounted behind a reverse proxy at sub-paths (e.g. /magooify,/app/d.b.hicks/8080)")
 	noBrowser := flag.Bool("no-browser", false, "Disable automatic browser launch in desktop mode")
 	genDocs := flag.String("gen-docs", "", "Write the Swagger UI documentation page to the given path and exit")
 	flag.Parse()
@@ -86,11 +87,11 @@ func main() {
 	}
 
 	addr := net.JoinHostPort(bindHost, *port)
-	base := normalizeBasePath(*basePath)
+	basePaths := parseBasePaths(*basePath)
 
 	a := newAPI(isServerMode, docsFS)
 
-	handler := buildHandler(a, base)
+	handler := buildHandler(a, basePaths)
 
 	user := a.getUser(&http.Request{})
 
@@ -99,16 +100,23 @@ func main() {
 	log.Printf("Mode      : %s", strings.ToUpper(user.Mode))
 	log.Printf("User      : %s (%s)", user.Username, user.AuthType)
 	log.Printf("Listening : http://%s", addr)
-	if base != "" {
-		log.Printf("Base path : %s", base)
+	for _, bp := range basePaths {
+		log.Printf("Base path : %s", bp)
+		log.Printf("UI        : http://%s%s/", addr, bp)
+		log.Printf("OpenAPI   : http://%s%s/docs/api", addr, bp)
 	}
-	log.Printf("UI        : http://%s%s/", addr, base)
-	log.Printf("OpenAPI   : http://%s%s/docs/api", addr, base)
+	if len(basePaths) == 0 {
+		log.Printf("UI        : http://%s/", addr)
+		log.Printf("OpenAPI   : http://%s/docs/api", addr)
+	}
 	log.Printf("==================================================")
 
 	// Auto-launch web browser in desktop mode
 	if !isServerMode && !*noBrowser {
-		targetURL := fmt.Sprintf("http://127.0.0.1:%s%s/", *port, base)
+		targetURL := fmt.Sprintf("http://127.0.0.1:%s/", *port)
+		if len(basePaths) > 0 {
+			targetURL = fmt.Sprintf("http://127.0.0.1:%s%s/", *port, basePaths[0])
+		}
 		go func() {
 			log.Printf("Launching browser targeting %s...", targetURL)
 			if err := openBrowser(targetURL); err != nil {
@@ -141,53 +149,94 @@ func normalizeBasePath(p string) string {
 	return strings.TrimSuffix(p, "/")
 }
 
-// basePathHandler wraps the application handler so it can be served from a
-// reverse-proxy sub-path such as /magooify. Requests arriving with that path
-// prefix have the prefix stripped before they reach the application routes;
-// requests without the prefix (e.g. direct access or a proxy that strips it
+// parseBasePaths splits a comma-separated list of base paths (from the
+// --base-path flag or BASE_PATH env var) and normalizes each entry.
+func parseBasePaths(raw string) []string {
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if bp := normalizeBasePath(part); bp != "" {
+			out = append(out, bp)
+		}
+	}
+	return out
+}
+
+// basePathContextKey carries the reverse-proxy base path that was stripped
+// from a request into the inner handlers, so they can rebuild external URLs
+// (for example a trailing-slash redirect) with the prefix included.
+type basePathContextKey struct{}
+
+func withBasePath(r *http.Request, base string) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), basePathContextKey{}, base))
+}
+
+func basePathOf(r *http.Request) string {
+	if b, ok := r.Context().Value(basePathContextKey{}).(string); ok {
+		return b
+	}
+	return ""
+}
+
+// basePathHandler wraps the application handler so it can be served from one
+// or more reverse-proxy sub-paths (e.g. /magooify or /app/d.b.hicks/8080).
+// Requests arriving with one of those path prefixes have the prefix stripped
+// before they reach the application routes. A request whose path is exactly a
+// prefix (no trailing slash) is redirected to the trailing-slash form so the
+// page's relative links resolve against the sub-path rather than the site
+// root. Requests without a known prefix (e.g. a proxy that strips the prefix
 // itself) are passed through unchanged.
-func basePathHandler(basePath string, next http.Handler) http.Handler {
-	basePath = normalizeBasePath(basePath)
-	if basePath == "" {
+func basePathHandler(basePaths []string, next http.Handler) http.Handler {
+	paths := make([]string, 0, len(basePaths))
+	for _, bp := range basePaths {
+		if bp = normalizeBasePath(bp); bp != "" {
+			paths = append(paths, bp)
+		}
+	}
+	if len(paths) == 0 {
 		return next
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path
-		var stripped string
 
-		switch {
-		case p == basePath:
-			// Redirect to the trailing-slash form so the browser resolves
-			// relative URLs (vendor/, style.css, app.js, api/...) against the
-			// base path instead of the site root.
-			location := basePath + "/"
-			if r.URL.RawQuery != "" {
-				location += "?" + r.URL.RawQuery
+		for _, basePath := range paths {
+			var stripped string
+
+			switch {
+			case p == basePath:
+				// Redirect to the trailing-slash form so the browser resolves
+				// relative URLs (vendor/, style.css, app.js, api/...) against
+				// the base path instead of the site root.
+				location := basePath + "/"
+				if r.URL.RawQuery != "" {
+					location += "?" + r.URL.RawQuery
+				}
+				http.Redirect(w, r, location, http.StatusMovedPermanently)
+				return
+			case p == basePath+"/":
+				stripped = "/"
+			case strings.HasPrefix(p, basePath+"/"):
+				stripped = strings.TrimPrefix(p, basePath)
+			default:
+				continue
 			}
-			http.Redirect(w, r, location, http.StatusMovedPermanently)
-			return
-		case p == basePath+"/":
-			stripped = "/"
-		case strings.HasPrefix(p, basePath+"/"):
-			stripped = strings.TrimPrefix(p, basePath)
-		default:
-			next.ServeHTTP(w, r)
+
+			r2 := r.Clone(r.Context())
+			r2.URL = new(url.URL)
+			*r2.URL = *r.URL
+			r2.URL.Path = stripped
+			r2.URL.RawPath = ""
+			next.ServeHTTP(w, withBasePath(r2, basePath))
 			return
 		}
 
-		r2 := r.Clone(r.Context())
-		r2.URL = new(url.URL)
-		*r2.URL = *r.URL
-		r2.URL.Path = stripped
-		r2.URL.RawPath = ""
-		next.ServeHTTP(w, r2)
+		next.ServeHTTP(w, r)
 	})
 }
 
 // buildHandler wires up all HTTP routes for the application, wrapping them
-// with support for being served from an optional reverse-proxy base path.
-func buildHandler(a *api, basePath string) http.Handler {
+// with support for being served from optional reverse-proxy base paths.
+func buildHandler(a *api, basePaths []string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/health", a.health)
 	mux.HandleFunc("/api/v1/user", a.user)
@@ -234,12 +283,14 @@ func buildHandler(a *api, basePath string) http.Handler {
 		serveIndex(w, r, subFS)
 	})
 
-	return basePathHandler(basePath, mux)
+	return basePathHandler(basePaths, mux)
 }
 
 // indexRedirectLocation returns the Location header for a 301 that adds a
 // trailing slash to a request that is about to serve index.html. ok is false
-// when the URL already ends in "/" and no redirect is needed.
+// when the URL already ends in "/" and no redirect is needed. If the request
+// had a reverse-proxy base path stripped, the prefix is re-attached so the
+// redirect points at the external URL the browser sees.
 func indexRedirectLocation(r *http.Request) (string, bool) {
 	p := r.URL.Path
 
@@ -255,7 +306,7 @@ func indexRedirectLocation(r *http.Request) (string, bool) {
 	}
 
 	if p != "/" && !strings.HasSuffix(p, "/") {
-		loc := p + "/"
+		loc := basePathOf(r) + p + "/"
 		if r.URL.RawQuery != "" {
 			loc += "?" + r.URL.RawQuery
 		}

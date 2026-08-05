@@ -226,7 +226,7 @@ func TestNormalizeBasePath(t *testing.T) {
 func TestServeUnderBasePath(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
-	handler := buildHandler(a, "/magooify")
+	handler := buildHandler(a, []string{"/magooify"})
 
 	cases := []struct {
 		path        string
@@ -277,7 +277,7 @@ func TestServeUnderBasePath(t *testing.T) {
 func TestServeIndexPlainRelativeLinks(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
-	handler := buildHandler(a, "/magooify")
+	handler := buildHandler(a, []string{"/magooify"})
 
 	req := httptest.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
@@ -308,14 +308,14 @@ func TestIndexRedirectAddsTrailingSlash(t *testing.T) {
 	// No configured base path: a proxy that passes the sub-path through (or
 	// direct access) reaches the SPA fallback with a no-slash URL and must be
 	// redirected so relative links resolve correctly.
-	handler := buildHandler(a, "")
+	handler := buildHandler(a, nil)
 
 	cases := []struct {
-		path       string
-		wantCode   int
-		wantLoc    string
-		wantHTML   bool
-		wantCT     string
+		path     string
+		wantCode int
+		wantLoc  string
+		wantHTML bool
+		wantCT   string
 	}{
 		{"/magooify", http.StatusMovedPermanently, "/magooify/", false, ""},
 		{"/magooify?x=1", http.StatusMovedPermanently, "/magooify/?x=1", false, ""},
@@ -395,10 +395,101 @@ func TestSafeForwardedPrefix(t *testing.T) {
 	}
 }
 
+func TestServeNoStripMultipleBasePaths(t *testing.T) {
+	registerMimeTypes()
+	a := newAPI(true, docsFS)
+	// Pangolin no longer strips the prefix, so the app receives full paths
+	// under either sub-path and must strip them itself.
+	handler := buildHandler(a, []string{"/magooify", "/app/d.b.hicks/8080"})
+
+	cases := []struct {
+		path        string
+		wantCode    int
+		wantContent string
+		wantBody    string
+	}{
+		{"/magooify/", http.StatusOK, "text/html", "Go Self-Contained App"},
+		{"/magooify/vendor/bootstrap/bootstrap.min.css", http.StatusOK, "text/css", "bootstrap"},
+		{"/magooify/app.js", http.StatusOK, "text/javascript", "DOMContentLoaded"},
+		{"/magooify/api/v1/health", http.StatusOK, "application/json", `"ok"`},
+		{"/magooify/docs/api", http.StatusOK, "text/html", "swagger-ui"},
+		{"/app/d.b.hicks/8080/", http.StatusOK, "text/html", "Go Self-Contained App"},
+		{"/app/d.b.hicks/8080/vendor/bootstrap/bootstrap.min.css", http.StatusOK, "text/css", "bootstrap"},
+		{"/app/d.b.hicks/8080/api/v1/health", http.StatusOK, "application/json", `"ok"`},
+		{"/app/d.b.hicks/8080/docs/api", http.StatusOK, "text/html", "swagger-ui"},
+		// Requests outside a known prefix pass through to the site root.
+		{"/", http.StatusOK, "text/html", "Go Self-Contained App"},
+		{"/style.css", http.StatusOK, "text/css", ".brand-icon"},
+	}
+	for _, tc := range cases {
+		req := httptest.NewRequest("GET", tc.path, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != tc.wantCode {
+			t.Errorf("%s: status = %d, want %d", tc.path, rr.Code, tc.wantCode)
+		}
+		if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, tc.wantContent) {
+			t.Errorf("%s: content-type = %q, want %q", tc.path, ct, tc.wantContent)
+		}
+		if tc.wantBody != "" && !bytes.Contains(rr.Body.Bytes(), []byte(tc.wantBody)) {
+			t.Errorf("%s: body does not contain %q", tc.path, tc.wantBody)
+		}
+	}
+
+	// No-trailing-slash requests for each prefix must 301 to the slash form.
+	for _, prefix := range []string{"/magooify", "/app/d.b.hicks/8080"} {
+		req := httptest.NewRequest("GET", prefix, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusMovedPermanently {
+			t.Errorf("%s: status = %d, want 301", prefix, rr.Code)
+		}
+		if loc := rr.Header().Get("Location"); loc != prefix+"/" {
+			t.Errorf("%s: Location = %q, want %q", prefix, loc, prefix+"/")
+		}
+	}
+
+	// A no-slash SPA-fallback path under a prefix must redirect with the
+	// prefix re-attached so the browser stays under the sub-path.
+	req := httptest.NewRequest("GET", "/magooify/foo", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusMovedPermanently {
+		t.Errorf("/magooify/foo: status = %d, want 301", rr.Code)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/magooify/foo/" {
+		t.Errorf("/magooify/foo: Location = %q, want %q", loc, "/magooify/foo/")
+	}
+}
+
+func TestParseBasePaths(t *testing.T) {
+	cases := map[string][]string{
+		"":                              nil,
+		"/magooify":                     {"/magooify"},
+		"/magooify,/app/d.b.hicks/8080": {"/magooify", "/app/d.b.hicks/8080"},
+		" magooify , /app/x/ ":          {"/magooify", "/app/x"},
+		"/,":                            nil,
+	}
+	for in, want := range cases {
+		got := parseBasePaths(in)
+		if len(got) != len(want) {
+			t.Errorf("parseBasePaths(%q) = %v, want %v", in, got, want)
+			continue
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("parseBasePaths(%q) = %v, want %v", in, got, want)
+				break
+			}
+		}
+	}
+}
+
 func TestServeWithoutBasePathStillWorks(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
-	handler := buildHandler(a, "")
+	handler := buildHandler(a, nil)
 
 	req := httptest.NewRequest("GET", "/style.css", nil)
 	rr := httptest.NewRecorder()
