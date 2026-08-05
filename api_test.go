@@ -3,10 +3,28 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"mime"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+func TestRegisteredMimeTypes(t *testing.T) {
+	registerMimeTypes()
+
+	want := map[string]string{
+		".html": "text/html; charset=utf-8",
+		".css":  "text/css; charset=utf-8",
+		".js":   "text/javascript; charset=utf-8",
+		".json": "application/json",
+	}
+	for ext, wantType := range want {
+		if got := mime.TypeByExtension(ext); got != wantType {
+			t.Errorf("TypeByExtension(%q) = %q, want %q", ext, got, wantType)
+		}
+	}
+}
 
 func TestHealthEndpoint(t *testing.T) {
 	a := newAPI(false, docsFS)
@@ -186,5 +204,89 @@ func TestServeSwaggerUIAsset(t *testing.T) {
 	}
 	if !bytes.Contains(rr.Body.Bytes(), []byte("swagger-ui")) {
 		t.Errorf("expected Swagger UI stylesheet to be served")
+	}
+}
+
+func TestNormalizeBasePath(t *testing.T) {
+	cases := map[string]string{
+		"":           "",
+		"   ":        "",
+		"/":          "",
+		"magooify":   "/magooify",
+		"/magooify":  "/magooify",
+		"/magooify/": "/magooify",
+	}
+	for in, want := range cases {
+		if got := normalizeBasePath(in); got != want {
+			t.Errorf("normalizeBasePath(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestServeUnderBasePath(t *testing.T) {
+	registerMimeTypes()
+	a := newAPI(true, docsFS)
+	handler := buildHandler(a, "/magooify")
+
+	cases := []struct {
+		path        string
+		wantCode    int
+		wantContent string
+		wantBody    string
+	}{
+		{"/magooify/", http.StatusOK, "text/html", "Go Self-Contained App"},
+		{"/magooify", http.StatusOK, "text/html", "Go Self-Contained App"},
+		{"/magooify/style.css", http.StatusOK, "text/css", ".brand-icon"},
+		{"/magooify/vendor/bootstrap/bootstrap.min.css", http.StatusOK, "text/css", "bootstrap"},
+		{"/magooify/app.js", http.StatusOK, "text/javascript", "DOMContentLoaded"},
+		{"/magooify/api/v1/user", http.StatusOK, "application/json", `"auth_type"`},
+		{"/magooify/api/v1/health", http.StatusOK, "application/json", `"ok"`},
+		{"/magooify/docs/api", http.StatusOK, "text/html", "swagger-ui"},
+		{"/magooify/docs/swagger.json", http.StatusOK, "application/json", `"swagger"`},
+		{"/magooify/docs/swagger-ui/swagger-ui.css", http.StatusOK, "text/css", "swagger-ui"},
+	}
+
+	for _, tc := range cases {
+		req := httptest.NewRequest("GET", tc.path, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != tc.wantCode {
+			t.Errorf("%s: status = %d, want %d", tc.path, rr.Code, tc.wantCode)
+		}
+		if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, tc.wantContent) {
+			t.Errorf("%s: content-type = %q, want %q", tc.path, ct, tc.wantContent)
+		}
+		if tc.wantBody != "" && !bytes.Contains(rr.Body.Bytes(), []byte(tc.wantBody)) {
+			t.Errorf("%s: body does not contain %q", tc.path, tc.wantBody)
+		}
+	}
+}
+
+func TestServeWithoutBasePathStillWorks(t *testing.T) {
+	registerMimeTypes()
+	a := newAPI(true, docsFS)
+	handler := buildHandler(a, "")
+
+	req := httptest.NewRequest("GET", "/style.css", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/css") {
+		t.Errorf("content-type = %q, want text/css", ct)
+	}
+
+	req = httptest.NewRequest("GET", "/", nil)
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Errorf("content-type = %q, want text/html", ct)
 	}
 }
