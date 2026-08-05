@@ -9,6 +9,7 @@ import (
 	"mime"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"runtime"
@@ -59,6 +60,7 @@ func main() {
 	port := flag.String("port", defaultPort, "Port to listen on")
 	mode := flag.String("mode", defaultMode, "Operation mode: 'desktop' or 'server'")
 	host := flag.String("host", defaultHost, "Host IP to bind to (defaults to 127.0.0.1 for desktop, 0.0.0.0 for server)")
+	basePath := flag.String("base-path", getEnv("BASE_PATH", ""), "Comma-separated URL prefixes to serve under when mounted behind a reverse proxy at sub-paths (e.g. /magooify); the app is always also served from the site root")
 	noBrowser := flag.Bool("no-browser", false, "Disable automatic browser launch in desktop mode")
 	genDocs := flag.String("gen-docs", "", "Write the Swagger UI documentation page to the given path and exit")
 	flag.Parse()
@@ -84,10 +86,11 @@ func main() {
 	}
 
 	addr := net.JoinHostPort(bindHost, *port)
+	basePaths := parseBasePaths(*basePath)
 
 	a := newAPI(isServerMode, docsFS)
 
-	handler := buildHandler(a)
+	handler := buildHandler(a, basePaths)
 
 	user := a.getUser(&http.Request{})
 
@@ -96,8 +99,15 @@ func main() {
 	log.Printf("Mode      : %s", strings.ToUpper(user.Mode))
 	log.Printf("User      : %s (%s)", user.Username, user.AuthType)
 	log.Printf("Listening : http://%s", addr)
-	log.Printf("UI        : http://%s/", addr)
-	log.Printf("OpenAPI   : http://%s/docs/api", addr)
+	for _, bp := range basePaths {
+		log.Printf("Base path : %s", bp)
+		log.Printf("UI        : http://%s%s/", addr, bp)
+		log.Printf("OpenAPI   : http://%s%s/docs/api", addr, bp)
+	}
+	if len(basePaths) == 0 {
+		log.Printf("UI        : http://%s/", addr)
+		log.Printf("OpenAPI   : http://%s/docs/api", addr)
+	}
 	log.Printf("==================================================")
 
 	// Auto-launch web browser in desktop mode
@@ -121,11 +131,81 @@ func main() {
 	}
 }
 
-// buildHandler wires up all HTTP routes for the application. The app is
-// served from the site root; when mounted behind a reverse proxy at a
-// sub-path such as /magooify, the proxy is expected to strip that prefix
-// (reporting it via X-Forwarded-Prefix) before requests reach the app.
-func buildHandler(a *api) http.Handler {
+// parseBasePaths splits a comma-separated list of base paths (from the
+// --base-path flag or BASE_PATH env var) and normalizes each entry.
+func parseBasePaths(raw string) []string {
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if bp := normalizeBasePath(part); bp != "" {
+			out = append(out, bp)
+		}
+	}
+	return out
+}
+
+// basePathHandler wraps the application handler so it can also be served from
+// one or more reverse-proxy sub-paths (e.g. /magooify) without the proxy
+// needing to strip the prefix. Requests arriving with one of those path
+// prefixes have the prefix stripped before they reach the application routes.
+// A request whose path is exactly a prefix (no trailing slash) is redirected
+// to the trailing-slash form so the page's relative links resolve against the
+// sub-path rather than the site root. Requests without a known prefix (the
+// site root, or a proxy that strips the prefix itself) are passed through
+// unchanged, so the app is always also served from its default location.
+func basePathHandler(basePaths []string, next http.Handler) http.Handler {
+	paths := make([]string, 0, len(basePaths))
+	for _, bp := range basePaths {
+		if bp = normalizeBasePath(bp); bp != "" {
+			paths = append(paths, bp)
+		}
+	}
+	if len(paths) == 0 {
+		return next
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := r.URL.Path
+
+		for _, basePath := range paths {
+			var stripped string
+
+			switch {
+			case p == basePath:
+				// Redirect to the trailing-slash form so the browser resolves
+				// relative URLs (vendor/, style.css, app.js, api/...) against
+				// the base path instead of the site root.
+				location := basePath + "/"
+				if r.URL.RawQuery != "" {
+					location += "?" + r.URL.RawQuery
+				}
+				http.Redirect(w, r, location, http.StatusMovedPermanently)
+				return
+			case p == basePath+"/":
+				stripped = "/"
+			case strings.HasPrefix(p, basePath+"/"):
+				stripped = strings.TrimPrefix(p, basePath)
+			default:
+				continue
+			}
+
+			r2 := r.Clone(r.Context())
+			r2.URL = new(url.URL)
+			*r2.URL = *r.URL
+			r2.URL.Path = stripped
+			r2.URL.RawPath = ""
+			next.ServeHTTP(w, r2)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// buildHandler wires up all HTTP routes for the application. The app is always
+// served from the site root; the optional basePaths let it additionally be
+// served from reverse-proxy sub-paths such as /magooify when the proxy passes
+// the full path through.
+func buildHandler(a *api, basePaths []string) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/health", a.health)
 	mux.HandleFunc("/api/v1/user", a.user)
@@ -176,7 +256,7 @@ func buildHandler(a *api) http.Handler {
 		serveIndex(w, r, subFS)
 	})
 
-	return mux
+	return basePathHandler(basePaths, mux)
 }
 
 // indexRedirectLocation returns the Location header for a 301 that adds a

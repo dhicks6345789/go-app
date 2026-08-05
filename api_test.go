@@ -228,7 +228,7 @@ func TestServeAllRoutes(t *testing.T) {
 	a := newAPI(true, docsFS)
 	// A stripping proxy (Pangolin) removes the /magooify prefix before
 	// forwarding, so the app sees the site-relative paths below.
-	handler := buildHandler(a)
+	handler := buildHandler(a, nil)
 
 	cases := []struct {
 		path        string
@@ -267,7 +267,7 @@ func TestServeAllRoutes(t *testing.T) {
 func TestServeIndexPlainRelativeLinks(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
-	handler := buildHandler(a)
+	handler := buildHandler(a, nil)
 
 	req := httptest.NewRequest("GET", "/", nil)
 	rr := httptest.NewRecorder()
@@ -299,7 +299,7 @@ func TestIndexRedirectAddsTrailingSlash(t *testing.T) {
 	// unchanged (or direct access) reaches the SPA fallback. Only a stripping
 	// proxy's empty path is redirected (see TestIndexRedirectWithStrippedPrefix);
 	// files and SPA-fallback paths are served without a trailing-slash redirect.
-	handler := buildHandler(a)
+	handler := buildHandler(a, nil)
 
 	cases := []struct {
 		path     string
@@ -391,7 +391,7 @@ func TestSafeForwardedPrefix(t *testing.T) {
 func TestServeWithoutBasePathStillWorks(t *testing.T) {
 	registerMimeTypes()
 	a := newAPI(true, docsFS)
-	handler := buildHandler(a)
+	handler := buildHandler(a, nil)
 
 	req := httptest.NewRequest("GET", "/style.css", nil)
 	rr := httptest.NewRecorder()
@@ -413,5 +413,117 @@ func TestServeWithoutBasePathStillWorks(t *testing.T) {
 	}
 	if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
 		t.Errorf("content-type = %q, want text/html", ct)
+	}
+}
+
+func TestServeUnderBasePath(t *testing.T) {
+	registerMimeTypes()
+	a := newAPI(true, docsFS)
+	// With --base-path=/magooify the app serves the sub-path (a proxy passes
+	// the full path through) while continuing to serve the site root.
+	handler := buildHandler(a, []string{"/magooify"})
+
+	cases := []struct {
+		path        string
+		wantCode    int
+		wantContent string
+		wantBody    string
+	}{
+		// Under the base path.
+		{"/magooify/", http.StatusOK, "text/html", "Go Self-Contained App"},
+		{"/magooify/style.css", http.StatusOK, "text/css", ".brand-icon"},
+		{"/magooify/vendor/bootstrap/bootstrap.min.css", http.StatusOK, "text/css", "bootstrap"},
+		{"/magooify/app.js", http.StatusOK, "text/javascript", "DOMContentLoaded"},
+		{"/magooify/api/v1/user", http.StatusOK, "application/json", `"auth_type"`},
+		{"/magooify/api/v1/health", http.StatusOK, "application/json", `"ok"`},
+		{"/magooify/docs/api", http.StatusOK, "text/html", "swagger-ui"},
+		{"/magooify/docs/swagger.json", http.StatusOK, "application/json", `"swagger"`},
+		{"/magooify/docs/swagger-ui/swagger-ui.css", http.StatusOK, "text/css", "swagger-ui"},
+		// The site root keeps working alongside the base path.
+		{"/", http.StatusOK, "text/html", "Go Self-Contained App"},
+		{"/style.css", http.StatusOK, "text/css", ".brand-icon"},
+		{"/app.js", http.StatusOK, "text/javascript", "DOMContentLoaded"},
+		{"/api/v1/health", http.StatusOK, "application/json", `"ok"`},
+		{"/docs/api", http.StatusOK, "text/html", "swagger-ui"},
+	}
+
+	for _, tc := range cases {
+		req := httptest.NewRequest("GET", tc.path, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != tc.wantCode {
+			t.Errorf("%s: status = %d, want %d", tc.path, rr.Code, tc.wantCode)
+		}
+		if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, tc.wantContent) {
+			t.Errorf("%s: content-type = %q, want %q", tc.path, ct, tc.wantContent)
+		}
+		if tc.wantBody != "" && !bytes.Contains(rr.Body.Bytes(), []byte(tc.wantBody)) {
+			t.Errorf("%s: body does not contain %q", tc.path, tc.wantBody)
+		}
+	}
+
+	// A bare base path (no trailing slash) must 301 to the slash form so
+	// relative links in index.html resolve under the base path.
+	req := httptest.NewRequest("GET", "/magooify", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusMovedPermanently {
+		t.Errorf("/magooify: status = %d, want %d (redirect)", rr.Code, http.StatusMovedPermanently)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/magooify/" {
+		t.Errorf("/magooify: Location = %q, want %q", loc, "/magooify/")
+	}
+
+	// The query string survives the redirect.
+	req = httptest.NewRequest("GET", "/magooify?x=1", nil)
+	rr = httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusMovedPermanently {
+		t.Errorf("/magooify?x=1: status = %d, want %d (redirect)", rr.Code, http.StatusMovedPermanently)
+	}
+	if loc := rr.Header().Get("Location"); loc != "/magooify/?x=1" {
+		t.Errorf("/magooify?x=1: Location = %q, want %q", loc, "/magooify/?x=1")
+	}
+}
+
+func TestServeMultipleBasePaths(t *testing.T) {
+	registerMimeTypes()
+	a := newAPI(true, docsFS)
+	handler := buildHandler(a, []string{"/magooify", "/other"})
+
+	for _, prefix := range []string{"/magooify", "/other"} {
+		req := httptest.NewRequest("GET", prefix, nil)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusMovedPermanently {
+			t.Errorf("%s: status = %d, want 301", prefix, rr.Code)
+		}
+		if loc := rr.Header().Get("Location"); loc != prefix+"/" {
+			t.Errorf("%s: Location = %q, want %q", prefix, loc, prefix+"/")
+		}
+	}
+}
+
+func TestParseBasePaths(t *testing.T) {
+	cases := map[string][]string{
+		"":                 nil,
+		"/magooify":        {"/magooify"},
+		"/magooify,/foo":   {"/magooify", "/foo"},
+		" magooify , /x/ ": {"/magooify", "/x"},
+		"/,":               nil,
+	}
+	for in, want := range cases {
+		got := parseBasePaths(in)
+		if len(got) != len(want) {
+			t.Errorf("parseBasePaths(%q) = %v, want %v", in, got, want)
+			continue
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("parseBasePaths(%q) = %v, want %v", in, got, want)
+				break
+			}
+		}
 	}
 }
